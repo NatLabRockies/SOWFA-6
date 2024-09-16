@@ -72,7 +72,9 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-    Info << endl << "Starting time loop" << endl;
+    // This does an initial pressure solve assuming hydrostatic conditions.  It solves
+    // dp/dx = buoyancy.	
+    #include "initializePressureField.H"
 
 
     // Time stepping loop.

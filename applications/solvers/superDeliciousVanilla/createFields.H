@@ -57,6 +57,13 @@
     }
 
 
+    //- The initial pressure field is often set to zero, which is not a great initial
+    //  condition.  A better option is to solve the pressure field for hydrostatic
+    //  conditions.  If the user wants this, set this flag to true.
+    bool initPressureField = isRestart ? false : true;
+    initPressureField = runTime.controlDict().lookupOrDefault<bool>("initHydroStatic",initPressureField);
+
+
     //- Should the velocity flux non-coupled BCs be updated before entering the time loop.
     bool updatePhiUncoupledBoundariesOnRestart(ABLProperties.lookupOrDefault<bool>("updatePhiUncoupledBoundariesOnRestart",false));
 
