@@ -486,7 +486,8 @@ namespace Foam
         vector source = Zero;
         source.x() = -Coriolis_.f() * geostrophicWindDesired.y();
         source.y() =  Coriolis_.f() * geostrophicWindDesired.x();
-      //Info << "Coriolis term = " << source << endl;
+      //Info << "Geostrophic Wind Desired = " << geostrophicWindDesired << endl;
+      //Info << "Coriolis Term = " << source << endl;
     
     
         // Update the source term
