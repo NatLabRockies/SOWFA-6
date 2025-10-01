@@ -3,6 +3,7 @@ CoriolisForce/CoriolisForce.C
 buoyancyModel/buoyancyModel.C
 drivingForce/drivingForces.C
 perturbationZone/perturbationZones.C
+dampingLayer/dampingLayers.C
 hurricaneSource/hurricaneSource.C
 
 LIB = $(SOWFA_LIBBIN)/libSOWFAABLForcing
