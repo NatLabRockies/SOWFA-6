@@ -32,6 +32,8 @@ License
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
+
+//- Initialize this class
 template<class Type>
 void Foam::dampingLayer<Type>::initialize()
 {
@@ -54,22 +56,28 @@ void Foam::dampingLayer<Type>::initialize()
     }
 
     // Size the lists.
-    locationType_.setSize(nLayers_);
     adjacentBoundary_.setSize(nLayers_);
-    layerOrigin_.setSize(nLayers_);
-    layerVec_i_.setSize(nLayers_);
-    layerVec_j_.setSize(nLayers_);
-    layerVec_k_.setSize(nLayers_);
+    dampingFunctionType_.setSize(nLayers_);
+    useWallDist_.setSize(nLayers_);
+    layerThickness_.setSize(nLayers_);
+    dampingTimeScale_.setSize(nLayers_);
+    boundaryNormal_.setSize(nLayers_);
+    boundaryPoint_.setSize(nLayers_);
+    gridCellList_.setSize(nLayers_);
+    distanceFromBoundary_.setSize(nLayers_);
 
     
     // Call functions required to initialize this damping layers.
     readSubDict();
     inputChecks();
     defineWallDist();
+    findBoundaryNormal();
+    findDistanceFromBoundary();
 }
 
 
 
+//- Read the sub-dictionaries
 template<class Type>
 void Foam::dampingLayer<Type>::readSubDict()
 {
@@ -77,21 +85,21 @@ void Foam::dampingLayer<Type>::readSubDict()
     {
         dictionary subSubDict(subDict_.subDict(subDictList_[m]));
         
-        locationType_[m] = subSubDict.lookupOrDefault<word>("locationType","none");
-    
         adjacentBoundary_[m] = subSubDict.lookupOrDefault<word>("associatedBoundary","none");
     
         useWallDist_[m] = subSubDict.lookupOrDefault<bool>("useWallDistance",0);
     
-        layerOrigin_[m] = subSubDict.lookupOrDefault<vector>("origin", vector::zero);
-        layerVec_i_[m] = subSubDict.lookupOrDefault<vector>("i", vector::zero);
-        layerVec_j_[m] = subSubDict.lookupOrDefault<vector>("j", vector::zero);
-        layerVec_k_[m] = subSubDict.lookupOrDefault<vector>("k", vector::zero);
+        layerThickness_[m] = subSubDict.lookupOrDefault<scalar>("thickness", Zero);
+
+        dampingTimeScale_[m] = subSubDict.lookupOrDefault<scalar>("timeScale", Foam::VGREAT);
+
+        dampingFunctionType_[m] = subSubDict.lookupOrDefault<word>("function","none");
     }
 }
 
 
 
+//- Check for necessary inputs.  If they are not there, throw an error.
 template<class Type>
 void Foam::dampingLayer<Type>::inputChecks()
 {
@@ -99,37 +107,10 @@ void Foam::dampingLayer<Type>::inputChecks()
     {
         dictionary subSubDict(subDict_.subDict(subDictList_[m]));
 
-        // Check to see that boundary is provided for "lateralBoundary" option.  
-        if (locationType_[m] == "lateralBoundary")
+        // Check to see that associated boundary name is provided.  
+        if (!subSubDict.found("associatedBoundary"))
         {
-            if (!subSubDict.found("associatedBoundary"))
-            {
-                FatalErrorInFunction << "Must specify  'associatedBoundary' when "
-                                     << "'locationType' is 'adjacentBoundary'."
-                                     << abort(FatalError);
-            }
-        }
-       
-        // Check to see that origin, i-, j-, and k-vectors are provided for
-        // "arbitraryBox" option.
-        else if (locationType_[m] == "arbitraryBox")
-        {
-            if (!subSubDict.found("origin") ||
-                !subSubDict.found("i") || 
-                !subSubDict.found("j") || 
-                !subSubDict.found("k")) 
-            {
-                FatalErrorInFunction << "Must specify  'origin', 'i', 'j', "
-                                     << "'k' when 'locationType' is 'arbitraryBox'."
-                                     << abort(FatalError);
-            }
-        }
-      
-        // If neither option is selected, throw an error.
-        else
-        {
-            FatalErrorInFunction << "Must specify that 'locationType' is either "
-                                 << "'lateralBoundary' or 'arbitraryBox'."
+            FatalErrorInFunction << "Must specify  'associatedBoundary'."
                                  << abort(FatalError);
         }
     }
@@ -137,6 +118,7 @@ void Foam::dampingLayer<Type>::inputChecks()
 
 
 
+//- Check to see if wall distance will be used.  If so, compute it.
 template<class Type>
 void Foam::dampingLayer<Type>::defineWallDist()
 {
@@ -161,104 +143,128 @@ void Foam::dampingLayer<Type>::defineWallDist()
 
 
 
+//- Find boundary normal.
 template<class Type>
-void Foam::dampingLayer<Type>::setDampingStrength()
+void Foam::dampingLayer<Type>::findBoundaryNormal()
 {
     for (int m = 0; m < nLayers_; m++)
     {
         dictionary subSubDict(subDict_.subDict(subDictList_[m]));
     
-        // First, we need to get the origin, orientation, and size of the perturbation
-        // zone.  These parameters are given for the "arbitraryBox" specification, but
-        // if the zone is adjacent to a specified boundary, we need to calculate these
-        // parameters.
-        scalar xLength = 0.0;
-        scalar yLength = 0.0;
-        scalar zLength = 0.0;
-    
-        // if the perturbation zone is associated with a lateral boundary, it 
-        // means that it is a zone adjacent to and touching the given boundary.  
-        // This assumes that the boundary is lateral (not an upper or lower) and
-        // a planar surface, but that plane need not be Cartesian oriented.  The
-        // zone will also conform to complex terrain.
-        if (locationType_[m] == "lateralBoundary")
+        // Find the patch number for the associated patch.  All processors
+        // seem to know about non-processor patches even if they do not contain
+        // any patch faces.  If, for some reason, the processor has no knowledge
+        // of the patch, the patch number will remain -1.
+        label patchNum = -1;    
+        forAll(mesh_.boundary(),i)
         {
-    
-            // Find the patch number for the associated patch.  All processors
-            // seem to know about non-processor patches even if they do not contain
-            // any patch faces.  If, for some reason, the processor has no knowledge
-            // of the patch, the patch number will remain -1.
-            label patchNum = -1;    
-            forAll(mesh_.boundary(),i)
-            {
-                const word patchName = mesh_.boundary()[i].name();
-                patchNum = (adjacentBoundary_[m] == patchName) ? i : patchNum;
-            }
-       
-            // Check to see how many patch points of the associated lateral boundary
-            // that this processor contains.  The localPoints() function gets just the
-            // points that this processor uses, as opposed to the points() function that
-            // does some parallel reduce.
-            const vectorField& boundaryPointsLocal = mesh_.boundaryMesh()[patchNum].localPoints();
-            label patchSize = boundaryPointsLocal.size();
-    
-            // If this processor contains at least some of the patch faces, set
-            // the hasPatch variable to 1.
-            label hasPatch = (patchSize > 0) ? 1 : 0;
-    
-            // This is the meat of this part of the code.  Here, we set the cell perturbation zone's
-            // defining i-, j-, k-vectors and origin in the coordinate system of the domain.  We assume
-            // that the k-vector is up, and the i-vector is normal to the boundary and pointing inward
-            // to the domain.  The j-vector completes this with the right-hand rule.  The vector
-            // magnitudes are the x-, y-, and z-lengths of the cell perturbation zone.  Because not
-            // all processors can see the patch, nor can each processor see the full patch, some 
-            // parallel reduces happen in finding the bounding box and boundary normal.
-    
-            // Get the bounding box of the patch.  With the second argument of the boundaryBox
-            // constructor set to "true", a parallel reduce happens to get the bouding box
-            // of the entire patch, not just this processor's portion of the patch.
-            boundBox boundaryBounds(boundaryPointsLocal,true);
-    
-            // The dimensions of the perturbation zone are given for depth normal to the 
-            // lateral boundary (xLength), and the height (zLength), but the width of
-            // the zone is the width of the boundary patch which is computed from the
-            // bounding box width.
-            xLength = layerThickness_[m];
-            yLength = sqrt(sqr(boundaryBounds.max().x() - boundaryBounds.min().x()) + 
-                           sqr(boundaryBounds.max().y() - boundaryBounds.min().y()));
-            zLength = layerHeight_[m];
-    
-            // Get the normal unit vector of the first patch face.  We assume that the patch is
-            // planar so all faces should have the normal of the patch.  Only do this if
-            // this processor actually has faces on the patch, but then parallel 
-            // communicate the result.
-            vector boundaryNormal = vector::zero;
-            if (hasPatch == 1)
-            {
-                boundaryNormal = mesh_.Sf().boundaryField()[patchNum][0];
-                boundaryNormal /= mag(boundaryNormal);
-            }
-            reduce(boundaryNormal, sumOp<vector>());
-            reduce(hasPatch, sumOp<label>());
-            boundaryNormal /= scalar(hasPatch);
-    
-            // Define the i-, j-, and k-vectors of the cell perturbation zone.  The i-vector
-            // is the opposite of the patch normal (the patch normal points out; the i-
-            // vector points in.  The k-vector is up.  The j-vector is orthogonal to the
-            // others following the right-hand rule.
-            boxVec_i_[m] = -boundaryNormal;
-            boxVec_k_[m] =  vector(0.0,0.0,1.0);
-            boxVec_j_[m] =  boxVec_k_[m] ^ boxVec_i_[m];
-    
-            boxVec_i_[m] *= xLength;
-            boxVec_j_[m] *= yLength;
-            boxVec_k_[m] *= zLength;
-    
-            // To find the origin in the local coordinate system.
-            vectorField boundaryPointsLocalP = transformGlobalCartToLocalCart(boundaryPointsLocal,boxVec_i_[m],boxVec_j_[m],boxVec_k_[m]);
-            boundBox boundaryBoundsP(boundaryPointsLocalP,true);
-            boxOrigin_[m] = boundaryBoundsP.min();
+            const word patchName = mesh_.boundary()[i].name();
+            patchNum = (adjacentBoundary_[m] == patchName) ? i : patchNum;
         }
+       
+        // Check to see how many patch points of the associated lateral boundary
+        // that this processor contains.  The localPoints() function gets just the
+        // points that this processor uses, as opposed to the points() function that
+        // does some parallel reduce.
+        const vectorField& boundaryPointsLocal = mesh_.boundaryMesh()[patchNum].localPoints();
+        label patchSize = boundaryPointsLocal.size();
+    
+        // If this processor contains at least some of the patch faces, set
+        // the hasPatch variable to 1.
+        label hasPatch = (patchSize > 0) ? 1 : 0;
+    
+        // Get the normal unit vector of the first patch face.  We assume that the patch is
+        // planar so all faces should have the normal of the patch.  Only do this if
+        // this processor actually has faces on the patch, but then parallel communicate
+        // the result. In OpenFOAM, the boundary normal points out of the domain, so we want
+        // the negative of it that points into the domain.
+        vector boundaryNormal = vector::zero;
+        if (hasPatch == 1)
+        {
+            boundaryNormal = -mesh_.Sf().boundaryField()[patchNum][0];
+            boundaryNormal /= mag(boundaryNormal);
+        }
+        reduce(boundaryNormal, sumOp<vector>());
+        reduce(hasPatch, sumOp<label>());
+        boundaryNormal /= scalar(hasPatch);
+
+        boundaryNormal_[m] = boundaryNormal;
+
+        // Get a point on the patch. Do this by averaging all points on the patch.
+        const vectorField& boundaryPoints = mesh_.boundaryMesh()[patchNum].points();
+        scalar nBoundaryPoints = scalar(boundaryPoints.size());
+        point boundaryPoint = vector::zero;
+        forAll (boundaryPoints, i)
+        {
+            boundaryPoint += boundaryPoints[i];
+        }
+        boundaryPoint /= nBoundaryPoints;
+        boundaryPoint_[m] = boundaryPoint;
+    }
+}
+
+
+
+//- Find normal distance from damping start plane for each cell.
+template<class Type>
+void Foam::dampingLayer<Type>::findDistanceFromBoundary()
+{
+    for (int m = 0; m < nLayers_; m++)
+    {
+        DynamicList<label> gridCellList;
+        DynamicList<scalar>distanceFromBoundary;
+        forAll(mesh_.C(),j)
+        {
+            point meshPoint = mesh_.C()[j];
+            if (useWallDist_[m])
+            {
+                meshPoint.z() = zAgl_[j];
+            }
+            scalar distance = (meshPoint - boundaryPoint_[m]) & boundaryNormal_[m];
+
+            if (distance <= layerThickness_[m])
+            {
+                gridCellList.append(j);
+                distanceFromBoundary.append(distance);
+            }
+        }
+        gridCellList_[m] = gridCellList;
+        distanceFromBoundary_[m] = distanceFromBoundary;
+    }
+}
+
+
+
+//- Update the damping source term.
+template<class Type>
+void Foam::dampingLayer<Type>::update()
+{
+    for (int m = 0; m < nLayers_; m++)
+    {
+        forAll(gridCellList_[m], j)
+        {
+            Type source = Zero;
+
+            if ((dampingFunctionType_[m] == "sineSquared") ||
+                (dampingFunctionType_[m] == "sinSquared"))
+            {
+                source = (1.0/dampingTimeScale_[m]) * 
+                         Foam::sqr(Foam::sin(distanceFromBoundary_[m][j])) * 
+                         field_[gridCellList_[m][j]];
+            }
+            else if (dampingFunctionType_[m] == "linear")
+            {
+            }
+            else if ((dampingFunctionType_[m] == "cosine") ||
+                     (dampingFunctionType_[m] == "cos"))
+            {
+            }
+
+            source_[j] = source;
+        }
+        
+    }
+}
 
 
 

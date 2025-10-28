@@ -77,46 +77,50 @@ class dampingLayer
         //- Damping source field
         volFieldType source_;
 
-        //- Damping subdictionary within the overall dictionary.
+        //- Damping subdictionary within the overall dictionary
         dictionary subDict_;
 
-        //- List of the names of the damping layers.
+        //- List of the names of the damping layers
         wordList subDictList_;
 
-        //- Number of damping layers.
+        //- Number of damping layers
         label nLayers_;
 
-        //- Current time.
+        //- Current time
         scalar t_;
 
         //- Field for storing height above the ground
         volScalarField zAgl_;
 
-        //- Defines how the layer's location is defined, choices are:
-        //     -boundary: a layer adjacent to and touching a given boundary.
-        //     -arbitrary: a layer that is stand-alone in the domain.
-        List<word> locationType_;
+        //- Name of boundary to which the zone will be adjacent
+        List<word> adjacentBoundary_;
 
-        //- For zones where the locationType is "boundary", then use these 
-        //  location definitions:
+        //- Type of damping function
+        List<word> dampingFunctionType_;
 
-            //-- name of boundary to which the zone will be adjacent.
-            List<word> adjacentBoundary_;
+        //- Use height relative to the ground instead of absolute height
+        List<bool> useWallDist_;
+        bool useWallDistAny_;
 
-            //-- use height relative to the ground instead of absolute height
-            List<bool> useWallDist_;
-            bool useWallDistAny_;
+        //- Thickness of the layer
+        List<scalar> layerThickness_;
 
-        //- For zones where the locationType is "arbitraryBox", then use 
-        //  these location definitions:
+        //- Damping time scale
+        List<scalar> dampingTimeScale_;
 
-            //-- origin of the layer
-            List<vector> layerOrigin_;
+        //- Layer's vector normal to the associated boundary
+        List<vector> boundaryNormal_;
 
-            //-- vectors defining the arbitrary layer 
-            List<vector> layerVec_i_;
-            List<vector> layerVec_j_;
-            List<vector> layerVec_k_;
+        //- A point on the associated boundary
+        List<point> boundaryPoint_;
+
+        //- Grid cells in the layer
+        List<List<label> > gridCellList_;
+
+        //- Distance of cells in layer from the boundary
+        List<List<scalar> > distanceFromBoundary_;
+
+        
 
 
 
@@ -134,6 +138,12 @@ class dampingLayer
 
         //- Check to see if wall distance will be used.  If so, compute it.
         void defineWallDist();
+
+        //- Find boundary normal.
+        void findBoundaryNormal();
+
+        //- Find normal distance from damping start plane for each cell.
+        void findDistanceFromBoundary();
 
 
 
