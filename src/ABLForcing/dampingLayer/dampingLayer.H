@@ -77,6 +77,9 @@ class dampingLayer
         //- Damping source field
         volFieldType source_;
 
+        //- Distance field
+        volScalarField sourceStrength_;
+
         //- Damping subdictionary within the overall dictionary
         dictionary subDict_;
 
@@ -92,11 +95,18 @@ class dampingLayer
         //- Field for storing height above the ground
         volScalarField zAgl_;
 
+        //- Number of components in damped field
+        label nComponents_;
+
         //- Name of boundary to which the zone will be adjacent
         List<word> adjacentBoundary_;
 
-        //- Type of damping function
-        List<word> dampingFunctionType_;
+        //- Type of blending function
+        List<word> blendingFunctionType_;
+
+        //- Fraction of layer in which the strength is blended between
+        //  one and zero using the blending function. 
+        List<scalar> blendingFraction_;
 
         //- Use height relative to the ground instead of absolute height
         List<bool> useWallDist_;
@@ -107,6 +117,16 @@ class dampingLayer
 
         //- Damping time scale
         List<scalar> dampingTimeScale_;
+
+        //- Reference value to damp field toward
+        List<Type> referenceValue_;
+        
+        //- Component directions of the field to damp.  For example, if 
+        //  it is the velocity field, you can damp any combination of 
+        //  velocity components.  For example, you might want to damp u, 
+        //  v, and w, or you might only want to damp w but leave u and v 
+        //  alone.
+        List<Type> dampedComponents_;
 
         //- Layer's vector normal to the associated boundary
         List<vector> boundaryNormal_;
@@ -119,6 +139,9 @@ class dampingLayer
 
         //- Distance of cells in layer from the boundary
         List<List<scalar> > distanceFromBoundary_;
+
+        //- Damping strength
+        List<List<scalar> > dampingStrength_;
 
         
 
@@ -144,6 +167,17 @@ class dampingLayer
 
         //- Find normal distance from damping start plane for each cell.
         void findDistanceFromBoundary();
+
+        //- Compute damping strength.
+        void setDampingStrength();
+
+        //- Function used to deal with source terms in regions of overlapping
+        //  damping zones.  It is set up to choose the largest of the values, 
+        //  but it checks for the largest component-wise.
+        void setSource(scalar& sourceIn, scalar& sourceOut);
+        void setSource(vector& sourceIn, vector& sourceOut);
+        void setSource(symmTensor& sourceIn, symmTensor& sourceOut);
+        void setSource(tensor& sourceIn, tensor& sourceOut);
 
 
 

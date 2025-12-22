@@ -31,6 +31,8 @@ namespace Foam
 {
     template class dampingLayer<scalar>;
     template class dampingLayer<vector>;
+    template class dampingLayer<symmTensor>;
+    template class dampingLayer<tensor>;
 }
 
 // ************************************************************************* //
