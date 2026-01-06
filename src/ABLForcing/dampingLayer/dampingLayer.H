@@ -78,7 +78,7 @@ class dampingLayer
         volFieldType source_;
 
         //- Distance field
-        volScalarField sourceStrength_;
+      //volScalarField sourceStrength_;
 
         //- Damping subdictionary within the overall dictionary
         dictionary subDict_;
@@ -114,6 +114,10 @@ class dampingLayer
 
         //- Thickness of the layer
         List<scalar> layerThickness_;
+
+        //- Attenuate layer before it reaches the ground
+        List<scalar> terrainAttenuationHeight_;
+        List<scalar> terrainAttenuationBlendingFraction_;
 
         //- Damping time scale
         List<scalar> dampingTimeScale_;

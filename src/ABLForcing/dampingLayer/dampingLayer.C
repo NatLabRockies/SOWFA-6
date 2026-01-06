@@ -62,6 +62,8 @@ void Foam::dampingLayer<Type>::initialize()
     blendingFraction_.setSize(nLayers_);
     useWallDist_.setSize(nLayers_);
     layerThickness_.setSize(nLayers_);
+    terrainAttenuationHeight_.setSize(nLayers_);
+    terrainAttenuationBlendingFraction_.setSize(nLayers_);
     dampingTimeScale_.setSize(nLayers_);
     boundaryNormal_.setSize(nLayers_);
     boundaryPoint_.setSize(nLayers_);
@@ -98,6 +100,10 @@ void Foam::dampingLayer<Type>::readSubDict()
         useWallDist_[m] = subSubDict.lookupOrDefault<bool>("useWallDistance",0);
     
         layerThickness_[m] = subSubDict.lookupOrDefault<scalar>("thickness", Zero);
+
+        terrainAttenuationHeight_[m] = subSubDict.lookupOrDefault<scalar>("terrainAttenuationHeight", 0.0);
+
+        terrainAttenuationBlendingFraction_[m] = subSubDict.lookupOrDefault<scalar>("terrainAttenuationBlendingFraction",0.2);
 
         dampingTimeScale_[m] = subSubDict.lookupOrDefault<scalar>("timeScale", Foam::VGREAT);
 
@@ -347,13 +353,36 @@ void Foam::dampingLayer<Type>::setDampingStrength()
                 }
             }
 
+            // If a damping zone is on a lateral boundary (not the top boundary), and the user wants the damping
+            // to not reach the surface (e.g., to let in a turbulent inflow boundary layer without damping it),
+            // apply this damping layer "attenuation".
+            if (terrainAttenuationHeight_[m] > 0.0)
+            {
+                scalar zAgl = zAgl_[gridCellList_[m][j]];
+                scalar depthFull = (1.0 - terrainAttenuationBlendingFraction_[m]) * terrainAttenuationHeight_[m];
+                scalar depthBlended = terrainAttenuationBlendingFraction_[m] * terrainAttenuationHeight_[m];
+                scalar distanceFraction = 1.0 - ((zAgl - depthFull) / max(1.0E-6,depthBlended));
+
+                if (zAgl < terrainAttenuationHeight_[m])
+                {
+                    if (zAgl < depthFull)
+                    {
+                        strength = 0.0;
+                    }
+                    else
+                    {
+                        strength *= 0.5 * (1.0 + Foam::cos(Foam::constant::mathematical::pi * distanceFraction));
+                    }
+                }
+            }
+
             strength_.append(strength);
 
-            label cellID = gridCellList_[m][j];
-            if (strength > sourceStrength_[cellID])
-            {
-                sourceStrength_[cellID] = strength;
-            }
+          //label cellID = gridCellList_[m][j];
+          //if (strength > sourceStrength_[cellID])
+          //{
+          //    sourceStrength_[cellID] = strength;
+          //}
         }
         dampingStrength_[m] = strength_;
     }
@@ -482,8 +511,9 @@ Foam::dampingLayer<Type>::dampingLayer
             dimensionSet(field_.dimensions()/dimTime),
             Zero
         )
-    ),
+    )
 
+/*
     sourceStrength_
     (
         IOobject
@@ -502,6 +532,8 @@ Foam::dampingLayer<Type>::dampingLayer
             0.0
         )
     )
+*/
+
 
 {
     // Initialize the object of the class.
