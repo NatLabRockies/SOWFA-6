@@ -196,6 +196,13 @@ class perturbationZone
         //  if you want to have the height follow a time-varying boundary-layer height.
             List<autoPtr<Function1<scalar> > > PBLHeight_;
 
+	//- Activation/deactivation time.  Perturbations can be activated at a certain time and then
+	//  deactivated at another time.  For example, maybe you only need the perturbations in the
+	//  beginning of the simulation, or you want the mean flow to establish itself before turning
+	//  on the perturbations.
+	    List<scalar> activationTime_;
+	    List<scalar> deactivationTime_;
+
         //- Update period.  If "updateMode" is "fixedFrequency", this is
         //  the update period in seconds.  If each perturbation slab is updated 
         //  independently, updatePeriodSlab_ is used to store the update
