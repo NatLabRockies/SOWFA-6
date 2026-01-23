@@ -12,6 +12,7 @@
      ==
         fvc::div(qwall)
       + temperatureGeoMesoTerm.force()
+      + temperatureDampingLayers.source()
       + temperaturePerturbationZones.source()
       + fvOptions(T)
     );

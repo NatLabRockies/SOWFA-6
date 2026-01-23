@@ -4,7 +4,7 @@
 #include "CoriolisForce.H"
 #include "buoyancyModel.H"
 #include "drivingForce.H"
-#include "spongeLayer.H"
+#include "dampingLayer.H"
 #include "perturbationZone.H"
 #include "hurricaneSource.H"
 

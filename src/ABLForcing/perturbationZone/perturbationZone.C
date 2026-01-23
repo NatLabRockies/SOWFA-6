@@ -1101,7 +1101,7 @@ Foam::perturbationZone<Type>::perturbationZone
     // Set the pointer to the velocity field
     U_(field.db().objectRegistry::template lookupObject<volVectorField>("U")),
 
-    // Set the heigh above ground as first absolute height.
+    // Initially, set the height above ground as absolute height.
     zAgl_(mesh_.C() & vector(0,0,1)),
 
     // Initialize the random number generator.
