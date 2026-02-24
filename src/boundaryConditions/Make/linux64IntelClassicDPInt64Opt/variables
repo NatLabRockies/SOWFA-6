@@ -1,5 +1,0 @@
-surfaceStressModels = ./surfaceStressModels
-surfaceVelocityModels = ./surfaceVelocityModels
-surfaceHeatFluxModels = ./surfaceHeatFluxModels
-inflowOutflow = ./inflowOutflow
-LIB = $(SOWFA_LIBBIN)/libSOWFAboundaryConditions

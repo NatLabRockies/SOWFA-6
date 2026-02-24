@@ -1,3 +1,0 @@
-SOURCE = \
-scanningLidar/scanningLidar.C \
-spinnerLidar/spinnerLidar.C 
