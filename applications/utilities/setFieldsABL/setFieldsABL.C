@@ -75,6 +75,20 @@ volVectorField U
     mesh
 );
 
+volVectorField U0
+(
+    IOobject
+    (
+        "U_0",
+         runTime.timeName(),
+         mesh,
+         IOobject::NO_READ,
+         IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedVector("U_0",dimVelocity,Zero)
+);
+
 Info << "Reading field T" << endl;
 volScalarField T
 (
@@ -87,6 +101,20 @@ volScalarField T
         IOobject::NO_WRITE
     ),
     mesh
+);
+
+volScalarField T0
+(
+    IOobject
+    (
+        "T_0",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("T_0",dimTemperature,Zero)
 );
 
 Info << "Reading field p_rgh" << endl;
@@ -404,6 +432,13 @@ if (updateInternalFields)
 }
 
 
+// Copy the intial fields for U and T to the old time.
+// This allows the 2nd-order backward time differencing
+// to not revert to 1st-order in the first time step.
+U0 = U;
+T0 = T;
+
+
 // Update the boundary field.
 if (updateBoundaryFields)
 {
@@ -417,8 +452,10 @@ if (updateBoundaryFields)
 // Write out the updated fields.
 Info<< "Writing field U" << endl;
 U.write();
+U0.write();
 Info<< "Writing field T" << endl;
 T.write(); 
+T0.write();
 Info<< "Writing field p_rgh" << endl;
 p_rgh.write();
 
