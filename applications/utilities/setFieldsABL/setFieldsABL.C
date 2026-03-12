@@ -432,13 +432,6 @@ if (updateInternalFields)
 }
 
 
-// Copy the intial fields for U and T to the old time.
-// This allows the 2nd-order backward time differencing
-// to not revert to 1st-order in the first time step.
-U0 = U;
-T0 = T;
-
-
 // Update the boundary field.
 if (updateBoundaryFields)
 {
@@ -447,6 +440,13 @@ if (updateBoundaryFields)
     T.correctBoundaryConditions();
     p_rgh.correctBoundaryConditions();
 }
+
+
+// Copy the intial fields for U and T to the old time.
+// This allows the 2nd-order backward time differencing
+// to not revert to 1st-order in the first time step.
+U0 = U;
+T0 = T;
 
 
 // Write out the updated fields.
