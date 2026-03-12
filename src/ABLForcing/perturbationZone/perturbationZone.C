@@ -54,6 +54,7 @@ void Foam::perturbationZone<Type>::initialize()
     // Size the lists.
     locationType_.setSize(nZones_);
     adjacentBoundary_.setSize(nZones_);
+    boundaryOffset_.setSize(nZones_);
     layerThickness_.setSize(nZones_);
     layerHeight_.setSize(nZones_);
     useWallDist_.setSize(nZones_);
@@ -78,6 +79,8 @@ void Foam::perturbationZone<Type>::initialize()
     PBLHeight_.setSize(nZones_);
     applicationMode_.setSize(nZones_);
     clipAtTwoThirdsPBLHeight_.setSize(nZones_);
+    activationTime_.setSize(nZones_);
+    deactivationTime_.setSize(nZones_);
     lastUpdateTime_.setSize(nZones_,runTime_.value());
     lastUpdateTimeSlab_.setSize(nZones_);
 
@@ -106,6 +109,8 @@ void Foam::perturbationZone<Type>::readSubDict()
         locationType_[m] = subSubDict.lookupOrDefault<word>("locationType","none");
     
         adjacentBoundary_[m] = subSubDict.lookupOrDefault<word>("associatedBoundary","none");
+
+	boundaryOffset_[m] = subSubDict.lookupOrDefault<scalar>("boundaryOffset",0.0);
     
         layerThickness_[m] = subSubDict.lookupOrDefault<scalar>("thickness",0.0);
         layerHeight_[m] = subSubDict.lookupOrDefault<scalar>("height",0.0);
@@ -135,7 +140,7 @@ void Foam::perturbationZone<Type>::readSubDict()
 
         updateMode_[m] = subSubDict.lookupOrDefault<word>("updateMode","fixedFrequency");
 
-	updatePeriodScalar_[m] = subSubDict.lookupOrDefault<scalar>("updatePeriodScalar",1.0);
+        updatePeriodScalar_[m] = subSubDict.lookupOrDefault<scalar>("updatePeriodScalar",1.0);
 
         if (subSubDict.found("PBLHeight"))
         {
@@ -147,6 +152,10 @@ void Foam::perturbationZone<Type>::readSubDict()
         applicationMode_[m] = subSubDict.lookupOrDefault<word>("applicationMode","sourceTerm");
 
         clipAtTwoThirdsPBLHeight_[m] = subSubDict.lookupOrDefault<bool>("clipAtTwoThirdsPBLHeight",false);
+
+        activationTime_[m] = subSubDict.lookupOrDefault<scalar>("activationTime",-1.0E6);
+
+        deactivationTime_[m] = subSubDict.lookupOrDefault<scalar>("deactivationTIme",1.0E6);
     }
 }
 
@@ -240,13 +249,19 @@ void Foam::perturbationZone<Type>::inputChecks()
         if ((fluctuationMagMode_[m] == "manual") && (!subSubDict.found("fluctuationScale")))
         {
            FatalErrorInFunction << "Must specify fluctuationScale in 'manual' fluctuation magnitude mode."
-                                 << abort(FatalError);
+                                << abort(FatalError);
         }
 
         if ((fluctuationMagMode_[m] == "Eckert") && (!subSubDict.found("EckertNumber")))
         {
            FatalErrorInFunction << "Must specify EckertNumber in 'Eckert' fluctuation magnitude mode."
-                                 << abort(FatalError);
+                                << abort(FatalError);
+        }
+
+        if (activationTime_[m] > deactivationTime_[m])
+        {
+           FatalErrorInFunction << "Activation time must be earlier than deactivation time."
+                                << abort(FatalError);
         }
     }
 }
@@ -372,10 +387,25 @@ void Foam::perturbationZone<Type>::createPerturbationCells()
             boxVec_j_[m] *= yLength;
             boxVec_k_[m] *= zLength;
     
-            // To find the origin in the local coordinate system.
+            // To find the origin in the local coordinate system, transform the boundary points
+            // into the patch-local coordinate system, create a global bounding box (i.e., one
+            // that is parallel aware and collects points from all processes), and find the minimum
+            // of that bounding box (i.e., the "lower-left" point in this box).
             vectorField boundaryPointsLocalP = transformGlobalCartToLocalCart(boundaryPointsLocal,boxVec_i_[m],boxVec_j_[m],boxVec_k_[m]);
             boundBox boundaryBoundsP(boundaryPointsLocalP,true);
             boxOrigin_[m] = boundaryBoundsP.min();
+
+            // If the perturbation zone is offset normal to the boundary, apply that offset to the
+            // box origin in the i direction.
+            boxOrigin_[m].x() += boundaryOffset_[m];
+
+	    // If over complex terrain, the box origin z coordinate will be the minimum terrain height
+	    // on this boundary.  If we want height to be height above ground (terrain conforming
+	    // perturbation zone, we need to zero the box origin.
+	    if (useWallDist_[m])
+            {
+                boxOrigin_[m].z() = 0.0;
+            }
         }
     
       
@@ -459,8 +489,7 @@ void Foam::perturbationZone<Type>::createPerturbationCells()
 
         // In case perturbation horizontal slabs are updated independently in time,
         // size the updatePeriodSlab_ variable accordingly.
-        updatePeriodSlab_[m].setSize(dims_[m][2]);
-	updatePeriodSlab_[m] = 0.0;
+        updatePeriodSlab_[m].setSize(dims_[m][2],0.0);
         lastUpdateTimeSlab_[m].setSize(dims_[m][2],t_-VGREAT);
     }
 }
@@ -769,9 +798,8 @@ void Foam::perturbationZone<Type>::updateCellFluctuations(int m, int k)
     // built-in random number generator.
 
     // We may need the PBL height.
-    Info << "fluctuationMagMode_[" << m << "] = " << fluctuationMagMode_[m] << endl;
     scalar PBLHeightCurrent = (fluctuationMagMode_[m] == "Eckert") ?  PBLHeight_[m]->value(t_) : 1.0E15;
-    Info << "t = " << t_ << tab << "PBLHeightCurrent = " <<  PBLHeightCurrent << endl;
+  //Info << "t = " << t_ << tab << "PBLHeightCurrent = " <<  PBLHeightCurrent << endl;
 
     // If the perturbation magnitude is not directly specified,  update it
     // here.
@@ -937,142 +965,146 @@ void Foam::perturbationZone<Type>::update()
     // Loop over perturbation zones.
     for (int m = 0; m < nZones_; m++)
     {
-        // Get the time since the last perturbation update.
-        scalar timeSinceUpdate = t_ - lastUpdateTime_[m];
-
-        // For now, the only mode is fixed frequency update.  Each
-        // zone can update at its own frequency, though.
-        if (updateMode_[m] != "slabLocalWind")
+        // Only do perturbations if within the time perturbations are active.
+        if ((t_ >= activationTime_[m]) && (t_ < deactivationTime_[m]))
         {
-            if (timeSinceUpdate >= updatePeriod_[m])
+
+            // Get the time since the last perturbation update.
+            scalar timeSinceUpdate = t_ - lastUpdateTime_[m];
+    
+            // For now, the only mode is fixed frequency update.  Each
+            // zone can update at its own frequency, though.
+            if (updateMode_[m] != "slabLocalWind")
             {
-                if (updateMode_[m] != "fixedFrequency")
+                if (timeSinceUpdate >= updatePeriod_[m])
                 {
-                    vector velAvg;
-                    vector velMin; 
-                    vector velMax;
-                    vector vel;
-                    if (updateMode_[m] == "maxWind")
+                    if (updateMode_[m] != "fixedFrequency")
                     {
-                        getVelocityInZone(m,velAvg,velMin,velMax);
-                        vel = velMax;
-                    }
-                    else if (updateMode_[m] == "windAtPBLHeight")
-                    {
-                        scalar PBLHeightCurrent = PBLHeight_[m]->value(t_);
-                        getVelocityAtHeight(m,PBLHeightCurrent,velAvg,velMin,velMax);
-                        vel = velAvg;
-                    }
-
-                    // Get the flow-through time across the width of the perturbation zone. This becomes the update time.
-                    vector d = boxVec_i_[m];
-                    scalar mag_d = max(mag(d),1.0E-6);
-                    vector n = d/mag_d;
-
-                    Info << "updatePeriod = " << updatePeriod_[m] << endl;
-                    updatePeriod_[m] = updatePeriodScalar_[m] * (mag_d/(max(mag(vel & n),1.0E-6)*sign(vel & n)));
-
-                    Info << "vel = " << vel << tab << "d = " << d << tab << "mag(d) = " << mag_d << tab << "(vel & n) = " << (vel & n) << endl;
-                    Info << "updatePeriod = " << updatePeriod_[m] << endl;
-                }
-
-		// If the flow is opposing the boundary normal direction, the update period will be negative
-		// and perturbations won't be applied (i.e., if it is outflow, perturbations are not applied).
-		// However, currently, this doesn't look locally over the boundary in the case that you have
-		// mixed inflow and outflow.
-                if (updatePeriod_[m] >= 0.0)
-                {
-                    updateCellFluctuations(m);
-                
-                    // Update the perturbation field if the field is to be directly
-                    // updated; otherwise leave it zero.
-                    if (applicationMode_[m] == "direct")
-                    {
-                        updatePerturbationField(m);
+                        vector velAvg;
+                        vector velMin; 
+                        vector velMax;
+                        vector vel;
+                        if (updateMode_[m] == "maxWind")
+                        {
+                            getVelocityInZone(m,velAvg,velMin,velMax);
+                            vel = velMax;
+                        }
+                        else if (updateMode_[m] == "windAtPBLHeight")
+                        {
+                            scalar PBLHeightCurrent = PBLHeight_[m]->value(t_);
+                            getVelocityAtHeight(m,PBLHeightCurrent,velAvg,velMin,velMax);
+                            vel = velAvg;
+                        }
+    
+                        // Get the flow-through time across the width of the perturbation zone. This becomes the update time.
+                        vector d = boxVec_i_[m];
+                        scalar mag_d = max(mag(d),1.0E-6);
+                        vector n = d/mag_d;
+    
+                        updatePeriod_[m] = updatePeriodScalar_[m] * (mag_d/(max(mag(vel & n),1.0E-6)*sign(vel & n)));
+    
+                      //Info << "vel = " << vel << tab << "d = " << d << tab << "mag(d) = " << mag_d << tab << "(vel & n) = " << (vel & n) << endl;
+                      //Info << "updatePeriod = " << updatePeriod_[m] << endl;
                     }
 
-                    // If indirectly perturbing the field through source terms, update
-                    // the source term.
-                    else if (applicationMode_[m] == "sourceTerm")
+                    // If the flow is opposing the boundary normal direction, the update period will be negative
+                    // and perturbations won't be applied (i.e., if it is outflow, perturbations are not applied).
+                    // However, currently, this doesn't look locally over the boundary in the case that you have
+                    // mixed inflow and outflow.
+                    if (updatePeriod_[m] >= 0.0)
                     {
-                        (timeSinceUpdate > GREAT) ? updatePerturbationField(m) : updateSourceTerm(m);
-                    }
-                }
-
-                // Mark this as the time of last update of perturbations.
-                updatePeriod_[m] = mag(updatePeriod_[m]);
-                lastUpdateTime_[m] = t_;
-                   
-            }
-            else
-            {
-                zeroSourceTerm(m);
-                zeroPerturbationField(m);
-            }
-            Info << updatePeriod_[m] << endl;
-        }
-        else if (updateMode_[m] == "slabLocalWind")
-        {
-            // Get the slab local velocities
-            List<vector> velAvg;
-            List<vector> velMin;
-            List<vector> velMax;
-            getVelocityOverSlabs(m,velAvg,velMin,velMax);
-
-            for (int k = 0; k < dims_[m][2]; k++)
-            {
-                // Get the time since the last perturbation update.
-                scalar timeSinceUpdate = t_ - lastUpdateTimeSlab_[m][k];
-
-                if (timeSinceUpdate >= updatePeriodSlab_[m][k])
-                {
-                    // Get the flow-through time across the width of the perturbation zone. This becomes the update time.
-                    vector d = boxVec_i_[m];
-                    scalar mag_d = max(mag(d),1.0E-6);
-                    vector n = d/mag_d;
-
-                    vector vel = velAvg[k];
-
-                    Info << "updatePeriod = " << updatePeriodSlab_[m][k] << endl;
-                    updatePeriodSlab_[m][k] = updatePeriodScalar_[m] * (mag_d/(max(mag(vel & n),1.0E-6)*sign(vel & n)));
-
-                    Info << "vel = " << vel << tab << "d = " << d << tab << "mag(d) = " << mag_d << tab << "(vel & n) = " << (vel & n) << endl;
-                    Info << "updatePeriod = " << updatePeriodSlab_[m][k] << endl;       
-
-		    // If the flow is opposing the boundary normal direction, the update period will be negative
-		    // and perturbations won't be applied (i.e., if it is outflow, perturbations are not applied).
-		    // However, currently, this doesn't look locally over the boundary in the case that you have
-		    // mixed inflow and outflow.
-                    if (updatePeriodSlab_[m][k] >= 0.0)
-                    {
-                        updateCellFluctuations(m,k);
-
+                        updateCellFluctuations(m);
+                    
                         // Update the perturbation field if the field is to be directly
                         // updated; otherwise leave it zero.
                         if (applicationMode_[m] == "direct")
                         {
-                            updatePerturbationField(m,k);
+                            updatePerturbationField(m);
                         }
-
+    
                         // If indirectly perturbing the field through source terms, update
                         // the source term.
                         else if (applicationMode_[m] == "sourceTerm")
                         {
-                            (timeSinceUpdate > GREAT) ? updatePerturbationField(m,k) : updateSourceTerm(m,k);
+                            (timeSinceUpdate > GREAT) ? updatePerturbationField(m) : updateSourceTerm(m);
                         }
                     }
-
+    
                     // Mark this as the time of last update of perturbations.
-                    updatePeriodSlab_[m][k] = mag(updatePeriodSlab_[m][k]);
-                    lastUpdateTimeSlab_[m][k] = t_;
+                    updatePeriod_[m] = mag(updatePeriod_[m]);
+                    lastUpdateTime_[m] = t_;
+                       
                 }
                 else
                 {
-                    zeroSourceTerm(m,k);
-                    zeroPerturbationField(m,k);
+                    zeroSourceTerm(m);
+                    zeroPerturbationField(m);
                 }
+                Info << updatePeriod_[m] << endl;
             }
-          //Info << updatePeriodSlab_[m] << endl;
+            else if (updateMode_[m] == "slabLocalWind")
+            {
+                // Get the slab local velocities
+                List<vector> velAvg;
+                List<vector> velMin;
+                List<vector> velMax;
+                getVelocityOverSlabs(m,velAvg,velMin,velMax);
+    
+                for (int k = 0; k < dims_[m][2]; k++)
+                {
+                    // Get the time since the last perturbation update.
+                    scalar timeSinceUpdate = t_ - lastUpdateTimeSlab_[m][k];
+    
+                    if (timeSinceUpdate >= updatePeriodSlab_[m][k])
+                    {
+                        // Get the flow-through time across the width of the perturbation zone. This becomes the update time.
+                        vector d = boxVec_i_[m];
+                        scalar mag_d = max(mag(d),1.0E-6);
+                        vector n = d/mag_d;
+    
+                        vector vel = velAvg[k];
+    
+                        updatePeriodSlab_[m][k] = updatePeriodScalar_[m] * (mag_d/(max(mag(vel & n),1.0E-6)*sign(vel & n)));
+    
+                      //Info << "vel = " << vel << tab << "d = " << d << tab << "mag(d) = " << mag_d << tab << "(vel & n) = " << (vel & n) << endl;
+                      //Info << "updatePeriod = " << updatePeriodSlab_[m][k] << endl;       
+    
+
+                        // If the flow is opposing the boundary normal direction, the update period will be negative
+                        // and perturbations won't be applied (i.e., if it is outflow, perturbations are not applied).
+                        // However, currently, this doesn't look locally over the boundary in the case that you have
+                        // mixed inflow and outflow.
+                        if (updatePeriodSlab_[m][k] >= 0.0)
+                        {
+                            updateCellFluctuations(m,k);
+    
+                            // Update the perturbation field if the field is to be directly
+                            // updated; otherwise leave it zero.
+                            if (applicationMode_[m] == "direct")
+                            {
+                                updatePerturbationField(m,k);
+                            }
+    
+                            // If indirectly perturbing the field through source terms, update
+                            // the source term.
+                            else if (applicationMode_[m] == "sourceTerm")
+                            {
+                                (timeSinceUpdate > GREAT) ? updatePerturbationField(m,k) : updateSourceTerm(m,k);
+                            }
+                        }
+    
+                        // Mark this as the time of last update of perturbations.
+                        updatePeriodSlab_[m][k] = mag(updatePeriodSlab_[m][k]);
+                        lastUpdateTimeSlab_[m][k] = t_;
+                    }
+                    else
+                    {
+                        zeroSourceTerm(m,k);
+                        zeroPerturbationField(m,k);
+                    }
+                }
+              //Info << updatePeriodSlab_[m] << endl;
+            }
         }
     }
 }

@@ -112,6 +112,13 @@ class perturbationZone
             //-- name of boundary to which the zone will be adjacent.
             List<word> adjacentBoundary_;
 
+	    //-- offset normal to the boundary. The perturbation zone need not be touching
+	    //   the boundary, but may be offset some distance normal to it. This
+	    //   is helpful, for example, if you want a layer of Rayleigh damping along
+	    //   the inflow boundary followed by a perturbation zone (Rayleigh damping
+	    //   will damp perturbations).
+	    List<scalar> boundaryOffset_;
+
             //-- thickness of the zone.
             List<scalar> layerThickness_;
 
@@ -184,17 +191,24 @@ class perturbationZone
         //                         perturbation slab (i.e., local flow through time per slab)
             List<word> updateMode_;
 
-	//- A scalar multiplier on update period.  This defaults to 1.0, but it can be helpful
-	//  if you have flow that varies greatly across the boundary and you are using slabLocalWind.
-	//  For example, if flow speed is small on one side and large on the other, the update period.
-	//  will depend on the middle speed, so it won't update fast enough for the fast flow, so one
-	//  may want to set this to 0.5
-	    List<scalar> updatePeriodScalar_;
+        //- A scalar multiplier on update period.  This defaults to 1.0, but it can be helpful
+        //  if you have flow that varies greatly across the boundary and you are using slabLocalWind.
+        //  For example, if flow speed is small on one side and large on the other, the update period.
+        //  will depend on the middle speed, so it won't update fast enough for the fast flow, so one
+        //  may want to set this to 0.5
+            List<scalar> updatePeriodScalar_;
 
         //- Height at which to measure wind velocity for determining update frequency if 
         //  "updateMode" is "windAtHeight."  This is a table of height versus time, for example,
         //  if you want to have the height follow a time-varying boundary-layer height.
             List<autoPtr<Function1<scalar> > > PBLHeight_;
+
+        //- Activation/deactivation time.  Perturbations can be activated at a certain time and then
+        //  deactivated at another time.  For example, maybe you only need the perturbations in the
+        //  beginning of the simulation, or you want the mean flow to establish itself before turning
+        //  on the perturbations.
+            List<scalar> activationTime_;
+            List<scalar> deactivationTime_;
 
         //- Update period.  If "updateMode" is "fixedFrequency", this is
         //  the update period in seconds.  If each perturbation slab is updated 

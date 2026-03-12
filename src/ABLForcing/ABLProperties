@@ -184,6 +184,8 @@ flowPerturbationZones.T
         updatePeriod            33.94;
       //applicationMode        "sourceTerm";
         applicationMode        "direct";
+        activationTime          0.0;
+        deactivationTime        600.0;
     }
     south
     {

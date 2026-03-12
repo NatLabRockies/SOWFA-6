@@ -294,7 +294,8 @@
     
     // - Rayleigh/viscous damping layer source terms [<field units>/s].
     Info << "Creating Rayleigh damping layer(s)" << endl;
-    spongeLayer momentumSpongeLayers("spongeList",U);
+    dampingLayer<vector> momentumDampingLayers(ABLProperties,U);
+    dampingLayer<scalar> temperatureDampingLayers(ABLProperties,T);
     
     
     // - Flow perturbation zone [<field units>/s].

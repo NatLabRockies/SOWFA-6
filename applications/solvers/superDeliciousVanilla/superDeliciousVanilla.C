@@ -119,8 +119,9 @@ int main(int argc, char *argv[])
             momentumGeoMesoTerm.update(pimple.finalPimpleIter());
             temperatureGeoMesoTerm.update(pimple.finalPimpleIter());
 
-            // - Rayleigh/viscious damping forcing.
-            momentumSpongeLayers.update();
+            // - Rayleigh damping forcing.
+            momentumDampingLayers.update();
+            temperatureDampingLayers.update();
 
             // - Coriolis forcing.
             Coriolis.update();

@@ -11,7 +11,7 @@
       + Coriolis.force()
       + momentumGeoMesoTerm.force()
       + hurricaneMesoTerm.source()
-      + momentumSpongeLayers.force()
+      + momentumDampingLayers.source()
       + momentumPerturbationZones.source()
       + (1.0 - scalar(bodyForceStabilization)) * actuatorTurbineArray.source()
       + fvOptions(U)
