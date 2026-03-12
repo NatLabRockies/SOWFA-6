@@ -1,0 +1,107 @@
+// Function object to create and calculate scheme blending fields
+// (for the use of the localBlended scheme for the advection term)
+// where the blending fields are based on geometry.  The possible
+// options are currently blending based on grid cell resolution,
+// grid x-, y-, and z-value.  The blending factor must lie between
+// 0 and 1.  The blending factor is f, and the blend, w, is given
+// by
+//
+//     w = f_{scheme_1} + (1 - f_{scheme_2})
+//
+// so, if you set the scheme as:
+//
+//     div(phi,U)    Gauss localBlended scheme1 scheme2;
+//
+// then a blending factor of f = 1 calls for scheme1, and
+// f = 0 calls for scheme2.
+
+ 
+
+    geometricBlendingFactor.U
+    {
+        // Mandatory entries (unmodifiable)
+        type                geometricBlendingFactor;
+        libs                ("libSOWFAfieldFunctionObjects.so");
+
+        // Mandatory entries (unmodifiable)
+        field               U;
+        result              UBlendingFactor;
+        log                 true;
+
+        // Optional entries (runtime modifiable)
+        tolerance           0.001;
+
+        // Any of the options can be chosen in combinations
+        // Option-1
+        useGridCellzValue            true;
+        gridCellzValueName           gridCellzValue;
+        gridCellzValueBlendingTable  table
+        (
+            (     0.0     1.00)
+            (   300.0     1.00)
+            (   400.0     0.99)
+            (   500.0     0.99)
+            (   600.0     0.80)
+            ( 90000.0     0.80)
+        );
+    }
+
+    geometricBlendingFactor.T
+    {
+        // Mandatory entries (unmodifiable)
+        type                geometricBlendingFactor;
+        libs                ("libSOWFAfieldFunctionObjects.so");
+
+        // Mandatory entries (unmodifiable)
+        field               T;
+        result              TBlendingFactor;
+        log                 true;
+
+        // Optional entries (runtime modifiable)
+        tolerance           0.001;
+
+        // Any of the options can be chosen in combinations
+
+        // Option-1
+        useGridCellzValue            true;
+        gridCellzValueName           gridCellzValue;
+        gridCellzValueBlendingTable  table
+        (
+            (     0.0     1.00)
+            (   300.0     1.00)
+            (   400.0     0.99)
+            (   500.0     0.99)
+            (   600.0     0.80)
+            ( 90000.0     0.80)
+        );
+    }
+
+    geometricBlendingFactor.k
+    {
+        // Mandatory entries (unmodifiable)
+        type                geometricBlendingFactor;
+        libs                ("libSOWFAfieldFunctionObjects.so");
+
+        // Mandatory entries (unmodifiable)
+        field               k;
+        result              kBlendingFactor;
+        log                 true;
+
+        // Optional entries (runtime modifiable)
+        tolerance           0.001;
+
+        // Any of the options can be chosen in combinations
+
+        // Option-1
+        useGridCellzValue            true;
+        gridCellzValueName           gridCellzValue;
+        gridCellzValueBlendingTable  table
+        (
+            (     0.0     1.00)
+            (   300.0     1.00)
+            (   400.0     0.99)
+            (   500.0     0.99)
+            (   600.0     0.80)
+            ( 90000.0     0.80)
+        );
+    }
