@@ -10,7 +10,7 @@ NWTC Design Codes DATA USE DISCLAIMER AGREEMENT that can be found at
 
 
 
-Required OpenFOAM Version:  2.3.x or 2.4.x
+Required OpenFOAM Version:  6
 Optional OpenFAST Version:  dev
 
 
@@ -112,10 +112,9 @@ Installation/Compiling:
 OpenFOAM:
    The included codes work only with the OpenFOAM CFD Toolbox.  The SOWFA
    repository does not include OpenFOAM.  Please visit 
-   github.com/OpenFOAM/OpenFOAM-2.4.x and github.com/OpenFOAM/ThirdParty-2.4.x
+   github.com/OpenFOAM/OpenFOAM-6 and github.com/OpenFOAM/ThirdParty-6
    to download and install OpenFOAM.  This release of SOWFA is meant to work
-   with up to OpenFOAM-2.4.x.  Making SOWFA work with versions 3.0 and higher
-   may come in the near future.  
+   with up to OpenFOAM-6. 
 
 OpenFAST: 
    If you want to use the optional OpenFAST coupling (OpenFAST is NREL wind 
@@ -132,13 +131,11 @@ SOWFA:
        and SOWFA.  Please adapt this and use it as necessary and get the 
        environment variables properly loaded.  One point is that the variable
        WM_PROJECT_USER_DIR will be where SOWFA gets compiled.  For example,
-       WM_PROJECT_USER_DIR might get set to SOWFA-2.4.x.  Then you will have
+       WM_PROJECT_USER_DIR might get set to SOWFA-6.  Then you will have
        your original SOWFA clean repository and a compilation repository
-       specific to the version of OpenFOAM you are using. (This may be helpful
-       when we make SOWFA compatible with 5.0.x or v1712 within the near
-       future).  Or, you can just set WM_PROJECT_USER_DIR to SOWFA so that
-       compilation happens in the SOWFA repository that you downloaded from
-       github.
+       specific to the version of OpenFOAM you are using. Or, you can just 
+       set WM_PROJECT_USER_DIR to SOWFA so that compilation happens in the 
+       SOWFA repository that you downloaded from github.
    3.  Run ./Allwclean
    4.  Run ./Allwmake
    5.  Optionally run ./Allwclean again to clean up any extraneous files.
