@@ -1,0 +1,98 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+
+    root            "";
+    case            "";
+    instance        "";
+    local           "";
+
+    class           dictionary;
+    object          ABLProperties;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include        "../setUp"
+
+
+
+
+// Properties of the background forcing source term for momentum
+momentumSource
+{
+    type        "given";
+    inputType   "speedAndDirection";
+
+    //Relaxation factor (only used when type is "computed")
+    gain        0.7;
+
+    sourceHeightsMomentum
+    (
+        0
+    );
+
+    sourceTableMomentumX
+    (
+        (0.0      0.0)
+        (99999.9  0.0)
+    );
+    sourceTableMomentumY
+    (
+        (0.0      0.0)
+        (99999.9  0.0)
+    );
+    sourceTableMomentumZ
+    (
+        (0.0      0.0)
+        (99999.9  0.0)
+    );
+}
+
+
+
+
+// Properties of the background forcing source term for temperature
+temperatureSource
+{
+    type        "given";
+
+    //Relaxation factor (only used when type is "computed")
+    gain        0.7;
+
+   sourceHeightsTemperature
+    (
+        0
+    );
+
+    sourceTableTemperature
+    (
+        (0.0      0.0)
+        (99999.9  0.0)
+    );
+}
+
+
+
+
+// Properties of the Coriolis force
+planetaryRotationPeriod   $EarthPeriod;
+latitude                  $latitude;
+
+
+
+
+// Statistics gathering frequency.
+statisticsOn              $statisticsOn;
+statisticsFrequency       $statisticsFrequency;
+
+// ************************************************************************* //

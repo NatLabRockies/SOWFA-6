@@ -1,0 +1,1 @@
+/nopt/nrel/ecom/wind/spack/opt/spack/linux-centos7-x86_64/gcc-4.8.5/gcc-7.3.0-5ie3ftu2ip567vtv5i7jhlvrgfev6zis/bin/gfortran  -w -Wline-truncation -ffree-line-length-none -fPIC -shared -o libDISCON.so DISCON.F90

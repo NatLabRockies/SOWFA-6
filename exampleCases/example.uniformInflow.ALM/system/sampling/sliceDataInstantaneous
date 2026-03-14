@@ -1,0 +1,52 @@
+      sliceDataInstantaneous
+      {
+          type                 surfaces;
+          functionObjectLibs   ("libsampling.so");
+          enabled              true;
+          interpolationScheme  cell;
+          //writeControl         timeStep;
+          writeControl         adjustableRunTime;
+          writeInterval        1;
+          surfaceFormat        vtk;
+          fields
+          (
+              U
+              bodyForce
+          );
+          surfaces
+          (
+              slice_horizontal
+              {
+                  type         plane;
+                  planeType    pointAndNormal;
+                  pointAndNormalDict
+                  {
+                       point  (0.01 0.01 0.01);
+                       normal (0.0 0.0 1.0);
+                  }
+                  triangulate  false;
+              }
+              slice_vertical
+              {
+                  type         plane;
+                  planeType    pointAndNormal;
+                  pointAndNormalDict
+                  {
+                       point  (0.01 0.01 0.01);
+                       normal (0.0 1.0 0.0);
+                  }
+                  triangulate  false;
+              }
+              slice_crosstream_0
+              {
+                  type         plane;
+                  planeType    pointAndNormal;
+                  pointAndNormalDict
+                  {
+                       point  (0.01 0.01 0.01);
+                       normal (1.0 0.0 0.0);
+                  }
+                  triangulate  false;
+              }
+          );
+      }

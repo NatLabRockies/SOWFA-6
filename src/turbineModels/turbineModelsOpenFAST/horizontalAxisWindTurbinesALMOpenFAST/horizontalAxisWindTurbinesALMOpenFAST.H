@@ -518,6 +518,18 @@ private:
             //- Blade force at each actuator point.
             DynamicList<List<List<vector> > > bladePointForce;
 
+            // The value of epsilon along the blade
+            DynamicList<List<List<vector> > > bladePointEpsilon;
+
+            // The function G, its derivative and relative velocity for filtered lifting line theory correction
+            DynamicList<List<List<vector> > > bladePointG;
+            DynamicList<List<List<vector> > > bladePointdG;
+            DynamicList<List<List<vector> > > bladePointRelativeVel;
+            // The velocity correction for filtered lifting line theory
+            DynamicList<List<List<vector> > > bladePointdU;
+            DynamicList<List<List<vector> > > bladePointULES;
+            DynamicList<List<List<vector> > > bladePointUOpt;
+
             //- Nacelle force at each actuator point.
             DynamicList<List<vector> > nacellePointForce;
 
@@ -630,6 +642,13 @@ private:
             OFstream* bladePointLiftFile_;
             OFstream* bladePointDragFile_;
 
+            OFstream* bladePointGxFile_;
+            OFstream* bladePointGyFile_;
+            OFstream* bladePointGzFile_;
+            OFstream* bladePointdGxFile_;
+            OFstream* bladePointdGyFile_;
+            OFstream* bladePointdGzFile_;
+
             OFstream* bladePointAxialForceFile_;
             OFstream* bladePointHorizontalForceFile_;
             OFstream* bladePointVerticalForceFile_;
@@ -738,12 +757,14 @@ private:
         void sampleTowerPointWindVectors();
         void computeBladeAlignedVelocity();
         void computeBladePointRadius();
+        void computeBladeEpsilon(int turbineNumber);
 
         //- FAST access functions.
         void sendInput();
         void getPositions();
         void sendVelocities();
         void getForces();
+        void getRelativeVel();
         void getNumBlades();
         void getNumBladePoints();
         void getNumTowerPoints();
@@ -771,6 +792,7 @@ private:
         //- Tip/root loss correction functions.
         void computeTipRootLossCorrectedVelocity(int turbineNumber);
         void computeTipRootLossCorrectedForce(int turbineNumber);
+        void computeFLLTCorrection(int turbineNumber);
 
         //- Rotates a point/vector about a rotation axis and rotation point by the specified
         //  angle in radians.

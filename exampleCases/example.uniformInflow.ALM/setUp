@@ -1,0 +1,113 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  6.x                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+
+
+// Domain size and number of cells.
+// * Used by blockMesh in 'constant/polyMesh/blockMeshDict'
+//
+// - This creates a simple uniform hexahedral mesh
+
+xMin               -3.0;                         // Minimum x-extent of domain (m).
+yMin               -5.0;                         // Minimum y-extent of domain (m).
+zMin               -5.0;                         // Minimum z-extent of domain (m).
+xMax                10.0;                         // Maximum x-extent of domain (m).
+yMax                5.0;                         // Maximum y-extent of domain (m).
+zMax                5.0;                         // Maximum z-extent of domain (m).
+nx                   110;                         // Number of cells in x-direction.
+ny                   110;                         // Number of cells in y-direction.
+nz                   110;                         // Number of cells in z-direction.
+
+
+
+
+
+// Turbine size.
+// * Used to scale up mesh dimensions above, refinement dimensions in topoSet, etc.
+//
+D                    126.0;
+
+
+
+
+
+// Number of cores and domain decomposition information.
+// * Used by decomposePar in 'system/decomposeParDict'
+//
+// - The common decomposistion algorithms are simple and scotch.
+//   Simple scales better for large problems on nice regular meshes,
+//   but scotch is geometrically general.
+
+nCores               72;                         // Number of cores on which to run this case.
+decompType           scotch;                      // Decomposition algorithm.  "simple" and "scotch" are good choices.
+decompOrder          (6 6 6);                     // Order of the decomposition number of partitions in (x y z)-directions (only for simple).
+
+
+
+
+
+// Time averaging options.
+// * Used by the planarAveraging function object in 'system/sampling/planarAveraging'
+
+statisticsOn         true;
+statisticsFrequency  5;                           // Frequency in time steps of statistics gathering.
+
+
+
+
+
+
+// Initial values for the variables.
+// * Used by setFieldsABL in 'system/setFieldsABLDict'
+// * Used in the initial fields in '0'
+//
+// - Note that U and T get overwritten if setFieldsABL is called.
+
+U0                  (10.0 0.0 0.0);               // Initial condition for wind speed (m/s).
+T0                   300.0;                       // Initial condition for potential temperature (K).
+p_rgh0               0.0;                         // Initial pressure (minus the hydrostatic variation and normalized by density) (m^2/s^2).
+nut0                 0.0;                         // Initial SGS viscosity (m^2/s).
+k0                   0.1;                         // Initial SGS turbulent kinetic energy (m^2/s^2).
+kappat0              0.0;                         // Initial SGS temperature diffusivity (m^2/s).
+Rwall0              (0.0 0.0 0.0 0.0 0.0 0.0);    // Initial wall shear stress value (m^2/s^2).
+qwall0              (0.0 0.0 0.0);                // Initial wall heat flux value (K-m/s).
+
+
+
+
+
+// General conditions and parameters.
+// * Used by solver in 'constant/ABLProperties'
+// * Used by solver in 'constant/transportProperties'
+
+Pr                   0.7;                         // Molecular Prandtl number.
+Prt                  0.33333333;                  // Turbulent Prandtl number.
+nu                   1.464E-5;                    // Molecular viscosity (m^2/s).
+TRef                 300.0;                       // Reference potential temperature (K).
+latitude             40.7;                        // Latitude on the Earth of the site (deg).
+EarthPeriod          1.0E30;                      // Earth's rotation period (hr).
+
+
+
+
+
+// SGS model inputs.
+// * Used by solver in 'constant/LESProperties'
+
+LESModel             kEqnABL;                     // SGS model selection.
+ce                   0.93;                        // SGS model constant.
+ck                   0.0673;                      // SGS model constant.
+
+
+
+
+
+#inputMode           merge
+
+// ************************************************************************* //
+

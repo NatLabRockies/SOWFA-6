@@ -1,0 +1,39 @@
+#!/bin/bash
+#SBATCH --partition=standard
+#SBATCH --ntasks=288
+#SBATCH --time=48:00:00
+#SBATCH --account=mmc
+#SBATCH --qos=high
+
+
+
+
+# User Input.
+#OpenFOAMversion=6-intel-equinor        # OpenFOAM version
+OpenFOAMversion=6-intel-dev        # OpenFOAM version
+startTime=0                            # Start time
+cores=$SLURM_NTASKS                    # Enter the number of cores you will preprocess on.
+runNumber=1                            # Enter the run number (useful for keeping track of restarts).
+solver=superDeliciousVanilla.turbine   # Enter the name of the flow solver.
+
+
+
+echo "Starting OpenFOAM job at: " $(date)
+echo "using " $cores " cores"
+
+
+# Source the bash profile and then call the appropriate OpenFOAM version function
+# so that all the modules and environment variables get set.
+echo "Sourcing the bash profile, loading modules, and setting the OpenFOAM environment variables..."
+source $HOME/.bash_profile
+OpenFOAM-$OpenFOAMversion
+
+
+# Get the control dictionary for this particular run.
+cp system/controlDict.$runNumber system/controlDict
+
+
+# Run the solver.
+srun -n $cores $solver -parallel > log.$runNumber.$solver 2>&1
+
+echo "Ending OpenFOAM job at: " $(date)

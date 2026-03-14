@@ -1,0 +1,13 @@
+{
+	"compiler-id" : "Intel",
+	"dir-cur-bld" : "/home/lmartine/nalu-wind-tony/build/reg_tests/test_files/nrel5MWactuatorLine/5MW_Baseline/ServoData",
+	"dir-cur-src" : "/home/lmartine/nalu-wind-tony/reg_tests/test_files/nrel5MWactuatorLine/5MW_Baseline/ServoData",
+	"dir-top-bld" : "/home/lmartine/nalu-wind-tony/build",
+	"dir-top-src" : "/home/lmartine/nalu-wind-tony",
+	"include-dirs" : [],
+	"language" : "Fortran",
+	"linked-target-dirs" : [],
+	"module-dir" : "/home/lmartine/nalu-wind-tony/build/reg_tests/test_files/nrel5MWactuatorLine/5MW_Baseline/ServoData",
+	"submodule-ext" : ".smod",
+	"submodule-sep" : "@"
+}

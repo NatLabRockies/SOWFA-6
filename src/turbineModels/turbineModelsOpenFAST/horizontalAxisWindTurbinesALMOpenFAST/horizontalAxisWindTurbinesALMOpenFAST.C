@@ -216,6 +216,10 @@ void horizontalAxisWindTurbinesALMOpenFAST::initialize()
     // the body force.
     forAll(turbineName,i)
     {
+
+        // This will compute epsilon at every blade location
+        computeBladeEpsilon(i);
+
         updateRotorSearchCells(i);
       //if (includeNacelle[i])
       //{
@@ -623,7 +627,21 @@ void horizontalAxisWindTurbinesALMOpenFAST::initializeArrays()
         bladePointForce.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
         towerPointForce.append(List<vector>(numTowerPoints[i],vector::zero));
         nacellePointForce.append(List<vector>(numNacellePoints[i],vector::zero));
-  
+
+        // The values of epsilon
+        bladePointEpsilon.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+ 
+        // Define the G functioni and gradient for the filtered lifting line theory correction
+        bladePointG.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+        bladePointdG.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+        // Induced velocity correction from filtered lifting line theory
+        bladePointdU.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+        bladePointULES.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+        bladePointUOpt.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+
+        // The relative velocity at the blade location used for the filtered lifting line theory correction
+        bladePointRelativeVel.append(List<List<vector> >(numBl[i], List<vector>(numBladePoints[i],vector::zero)));
+
         // Define the actuator element wind vector arrays and set them to zero.
         bladeWindVectorsCartesian.append(List<List<vector> >(numBl[i],List<vector>(numBladeSamplePoints[i],vector::zero)));
         bladeWindVectors.append(List<List<vector> >(numBl[i],List<vector>(numBladeSamplePoints[i],vector::zero)));
@@ -1869,6 +1887,91 @@ void horizontalAxisWindTurbinesALMOpenFAST::getForces()
 }
 
 
+void horizontalAxisWindTurbinesALMOpenFAST::getRelativeVel()
+{
+   // Local point velocity vector of doubles for communication with FAST.
+   std::vector<double> pointVel(3);
+
+   // Get the total number of velocity points for this processor's turbine.
+   int localNumPoints = 0;
+   if (p < numTurbines)
+   {
+       localNumPoints = (numBl[p] * numBladePoints[p]) + numTowerPoints[p] + 1;
+   }
+   
+
+   // Get the total number of velocity points for all turbines.
+   int totalNumPoints = 0;
+   forAll(numBl,i)
+   {
+       totalNumPoints += (numBl[i] * numBladePoints[i]) + numTowerPoints[i] + 1;
+   }
+ 
+   // Create a local point velocity list that is initially zero..
+   List<vector> vels_(totalNumPoints,vector::zero);
+
+   int startIndex = 0;
+
+   // Get the point velocities all updated and ordered nicely.
+   // Find the start index in that list that belongs to this processor.
+   startIndex = 0;
+   if (p < numTurbines)
+   {
+       for(int i = 0; i < p; i++)
+       {
+           startIndex += (numBl[i] * numBladePoints[i]) + numTowerPoints[i] + 1;
+       }
+
+       // Call FAST to populate this processor's part of the FAST point list.
+       for (int i = 0; i < localNumPoints; i++)
+       {
+	 //FAST->getForce(pointVel, i, p);
+	 FAST->getRelativeVelForceNode(pointVel, i, p);
+           vels_[startIndex + i].x() = pointVel[0];
+           vels_[startIndex + i].y() = pointVel[1];
+           vels_[startIndex + i].z() = pointVel[2];
+       }
+     //Pout << forces_ << endl;
+   }
+
+   // Parallel sum the list and send back out to all cores.
+   Pstream::gather(vels_,sumOp<List<vector> >());
+   Pstream::scatter(vels_);
+
+   // Put the local force vector entries into the nice ordered
+   // list of forces.
+   startIndex = 0;
+   forAll(bladePointRelativeVel,i)
+   {
+       int m = 0;
+
+       m++;
+
+       // Get blade vels points.
+       forAll(bladePointRelativeVel[i],j)
+       {
+           forAll(bladePointRelativeVel[i][j],k)
+           {
+               bladePointRelativeVel[i][j][k] = vels_[startIndex + m];
+             //vector a = vector::zero;
+             //a.x() = 1.0;
+             //bladePointForce[i][j][k] = a;
+               m++;
+           }
+       }
+       
+       forAll(towerPointForce[i],j)
+       {
+           m++;
+       }
+
+       startIndex += (numBl[i] * numBladePoints[i]) + numTowerPoints[i] + 1;
+   }
+
+}
+
+
+
 
 void horizontalAxisWindTurbinesALMOpenFAST::getNumBlades()
 {
@@ -2201,7 +2304,12 @@ void horizontalAxisWindTurbinesALMOpenFAST::sampleBladePointWindVectors()
 
     computeBladeAlignedVelocity();
     
-    
+   
+// TEST FLLT
+     getRelativeVel();
+ getForces();
+getChordLengths();
+
     // Apply a tip/root loss correction to the blade sampled velocities.
     forAll(bladeWindVectorsCartesian, i)
     {
@@ -2209,12 +2317,132 @@ void horizontalAxisWindTurbinesALMOpenFAST::sampleBladePointWindVectors()
         {
             computeTipRootLossCorrectedVelocity(i);
         }
+        else if ((tipRootLossCorrType[i] == "fllt") && pastFirstTimeStep)
+        {
+            computeFLLTCorrection(i);
+        }
     }
     
     
     /*
     Info << "bladeWindVectorsCartesian = " << bladeWindVectorsCartesian << endl;
     */
+}
+
+
+void horizontalAxisWindTurbinesALMOpenFAST::computeFLLTCorrection(int turbineNumber)
+{
+    // Compute the wind angle relative the the blade.
+    vector vRel;
+    // Dot product of velocity
+    scalar vmag;
+    // Dot product of velocity and force
+    scalar fvel;
+    // The differential
+    scalar dr;
+
+    // Epsilon for the LES and optimal    
+    scalar epsLES;
+    scalar epsOpt;
+    scalar argLES;
+    scalar argOpt;
+    scalar expLES;
+    scalar expOpt;
+
+    // The ratio between the current and previous time-steps to have stability
+    scalar f = 0.1;
+
+    // STEP 1 - Compute G
+    int i = turbineNumber;
+    forAll(bladePointG[i], j)
+    {
+        // 
+        // Step 1 - copmute G
+        // //
+        forAll(bladePointG[i][j], k)
+        {
+            // Compute the wind angle relative the the blade.
+            vRel = bladePointRelativeVel[i][j][k];
+            // Dot product of velocity
+            vmag = Foam::sqrt(vRel & vRel);
+            // Dot product of velocity and force
+            fvel = bladePointForce[i][j][k] & vRel;
+            // Compute the function G
+            bladePointG[i][j][k] = bladePointForce[i][j][k] - vRel * fvel / (vmag*vmag);  
+            // Zero out the velocity field
+            bladePointULES[i][j][k] *= 0.;
+            bladePointUOpt[i][j][k] *= 0.;
+
+        }
+        //
+        // Step 2 - compute dG
+        //
+        forAll(bladePointG[i][j], k)
+        {
+            if (k==0)
+            {
+                dr = (bladePointRadius[i][j][k+1] - bladePointRadius[i][j][k])/2.;
+                bladePointdG[i][j][k] = bladePointG[i][j][k] / dr;
+            }
+            else if(k==numBladePoints[i]-1)
+            {
+                dr = (bladePointRadius[i][j][k] - bladePointRadius[i][j][k-1])/2.;
+                bladePointdG[i][j][k] = - bladePointG[i][j][k] / dr;
+            }
+            else
+            {
+                dr = (bladePointRadius[i][j][k+1] - bladePointRadius[i][j][k-1])/2.;
+                // Compute the function G
+                bladePointdG[i][j][k] = (bladePointG[i][j][k+1]-bladePointG[i][j][k-1])/(2. * dr);
+            }
+        }
+        //
+        // Step 3 - compute u_LES and u_opt
+        //
+        forAll(bladePointG[i][j], k)
+        {
+            
+            forAll(bladePointdG[i][j], k2)
+            {
+                if (k != k2)
+                {
+                    epsLES = bladePointEpsilon[i][j][k2][0];
+                    epsOpt = bladePointChord[i][j][k2] * 0.25;               
+                    dr = bladePointRadius[i][j][k] - bladePointRadius[i][j][k2];
+    
+                    argLES = -dr*dr / (epsLES * epsLES);
+                    argOpt = -dr*dr / (epsOpt * epsOpt);
+
+                    vRel = bladePointRelativeVel[i][j][k2];
+                    vmag = Foam::sqrt(vRel & vRel);
+//                    if (argOpt > -20.0)
+ //                   {    
+                        expLES = Foam::exp(argLES);
+                        expOpt = Foam::exp(argOpt);
+ //                   }
+ //                   else
+ //                   {
+ //                       expLES = 0.;
+ //                       expOpt = 0.;
+ //                   }
+
+                    bladePointULES[i][j][k] -= bladePointdG[i][j][k2] / (vmag * dr) * (1. - expLES);
+                    bladePointUOpt[i][j][k] -= bladePointdG[i][j][k2] / (vmag * dr) * (1. - expOpt);
+                    
+                }
+            }
+            bladePointULES[i][j][k] /= (4. * Foam::constant::mathematical::pi);
+            bladePointUOpt[i][j][k] /= (4. * Foam::constant::mathematical::pi);
+        } 
+        //
+        // Step 4 - compute the velocity difference du
+        //
+        forAll(bladePointdU[i][j], k)
+        {
+            bladePointdU[i][j][k] = (1. - f) * bladePointdU[i][j][k] + f * (bladePointUOpt[i][j][k] - bladePointULES[i][j][k]);
+            bladeWindVectorsCartesian[i][j][k] -= bladePointdU[i][j][k];
+        }
+    }
 }
 
 
@@ -2538,6 +2766,27 @@ void horizontalAxisWindTurbinesALMOpenFAST::computeBladeAlignedVelocity()
 }
 
 
+void horizontalAxisWindTurbinesALMOpenFAST::computeBladeEpsilon(int turbineNumber)
+{
+    int i = turbineNumber;
+    forAll(bladePointEpsilon[i], j)
+    {
+        forAll(bladePointEpsilon[i][j], k)
+        {
+            if (bladeForceProjectionType[i] == "variableUniformGaussianChord")
+            {
+                scalar epsilonScalar = bladeEpsilon[i][0];
+                scalar epsilonMin = bladeEpsilon[i][1];
+                scalar epsilonMax = bladeEpsilon[i][2];
+                bladePointEpsilon[i][j][k][0] = max(min((epsilonScalar * bladePointChord[i][j][k]), epsilonMax), epsilonMin);
+            }
+            else
+            {
+                bladePointEpsilon[i][j][k] = bladeEpsilon[i];
+            }
+        }
+    }
+}
 
 
 
@@ -3211,11 +3460,7 @@ scalar horizontalAxisWindTurbinesALMOpenFAST::computeBladeProjectionFunction(vec
     }
     else if (bladeForceProjectionType[i] == "variableUniformGaussianChord")
     {
-        scalar epsilonScalar = bladeEpsilon[i][0];
-        scalar epsilonMin = bladeEpsilon[i][1];
-        scalar epsilonMax = bladeEpsilon[i][2];
-        scalar epsilon = max(min((epsilonScalar * bladePointChord[i][j][k]), epsilonMax), epsilonMin);
-        spreading = uniformGaussian3D(epsilon, dis);
+        spreading = uniformGaussian3D(bladePointEpsilon[i][j][k][0], dis);
     }
     else if (bladeForceProjectionType[i] == "lineToDiskGaussian3D")
     {
@@ -4097,6 +4342,8 @@ void horizontalAxisWindTurbinesALMOpenFAST::update()
 
     // Compute the actuator point forces.
     getForces();
+    // Obtain the relative velocities from openfast
+    //getRelativeVel();
 
     
     // Project the actuator forces as body forces.
@@ -4251,6 +4498,19 @@ void horizontalAxisWindTurbinesALMOpenFAST::openOutputFiles()
 
     //  bladePointDragFile_ = new OFstream(rootDir/time/"bladePointDrag");
     // *bladePointDragFile_ << "#Turbine    Blade    Time(s)    dt(s)    drag (N)" << endl;
+
+        bladePointGxFile_ = new OFstream(rootDir/time/"bladePointGx");
+       *bladePointGxFile_ << "#Turbine    Blade    Time(s)    dt(s)    Gx" << endl;
+        bladePointGyFile_ = new OFstream(rootDir/time/"bladePointGy");
+       *bladePointGyFile_ << "#Turbine    Blade    Time(s)    dt(s)    Gy" << endl;
+        bladePointGzFile_ = new OFstream(rootDir/time/"bladePointGz");
+       *bladePointGzFile_ << "#Turbine    Blade    Time(s)    dt(s)    Gz" << endl;
+        bladePointdGxFile_ = new OFstream(rootDir/time/"bladePointdGx");
+       *bladePointdGxFile_ << "#Turbine    Blade    Time(s)    dt(s)    dGx" << endl;
+        bladePointdGyFile_ = new OFstream(rootDir/time/"bladePointdGy");
+       *bladePointdGyFile_ << "#Turbine    Blade    Time(s)    dt(s)    dGy" << endl;
+        bladePointdGzFile_ = new OFstream(rootDir/time/"bladePointdGz");
+       *bladePointdGzFile_ << "#Turbine    Blade    Time(s)    dt(s)    dGz" << endl;
 
         bladePointAxialForceFile_ = new OFstream(rootDir/time/"bladePointAxialForce");
        *bladePointAxialForceFile_ << "#Turbine    Blade    Time(s)    dt(s)    axial force (N)" << endl;
@@ -4558,6 +4818,13 @@ void horizontalAxisWindTurbinesALMOpenFAST::printOutputFiles()
        //       *bladePointCdFile_ << i << " " << j << " " <<  time << " " << dt << " ";
        //       *bladePointLiftFile_ << i << " " << j << " " <<  time << " " << dt << " ";
        //       *bladePointDragFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointGxFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointGyFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointGzFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointdGxFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointdGyFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+                *bladePointdGzFile_ << i << " " << j << " " <<  time << " " << dt << " ";
+
                 *bladePointAxialForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointHorizontalForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
                 *bladePointVerticalForceFile_ << i << " " << j << " " <<  time << " " << dt << " ";
@@ -4574,6 +4841,21 @@ void horizontalAxisWindTurbinesALMOpenFAST::printOutputFiles()
        //           *bladePointCdFile_ << bladePointCd[i][j][k] << " ";
        //           *bladePointLiftFile_ << bladePointLift[i][j][k]*fluidDensity[i] << " ";
        //           *bladePointDragFile_ << bladePointDrag[i][j][k]*fluidDensity[i] << " ";
+
+                    *bladePointGxFile_ << bladePointG[i][j][k][0] << " ";
+                    *bladePointGyFile_ << bladePointG[i][j][k][1] << " ";
+                    *bladePointGzFile_ << bladePointG[i][j][k][2] << " ";
+//                    *bladePointdGxFile_ << bladePointdG[i][j][k][0] << " ";
+//                    *bladePointdGyFile_ << bladePointdG[i][j][k][1] << " ";
+//                    *bladePointdGzFile_ << bladePointdG[i][j][k][2] << " ";
+
+//                    *bladePointGxFile_ << bladePointULES[i][j][k][0] << " ";
+//                    *bladePointGyFile_ << bladePointULES[i][j][k][1] << " ";
+//                    *bladePointGzFile_ << bladePointULES[i][j][k][2] << " ";
+                    *bladePointdGxFile_ << bladePointForce[i][j][k][0] << " ";
+                    *bladePointdGyFile_ << bladePointForce[i][j][k][1] << " ";
+                    *bladePointdGzFile_ << bladePointForce[i][j][k][2] << " ";
+
                     *bladePointAxialForceFile_ << bladePointAxialForce[i][j][k]*fluidDensity[i] << " ";
                     *bladePointHorizontalForceFile_ << bladePointHorizontalForce[i][j][k]*fluidDensity[i] << " ";
                     *bladePointVerticalForceFile_ << bladePointVerticalForce[i][j][k]*fluidDensity[i] << " ";
@@ -4600,6 +4882,13 @@ void horizontalAxisWindTurbinesALMOpenFAST::printOutputFiles()
        //       *bladePointCdFile_ << endl;
        //       *bladePointLiftFile_ << endl;
        //       *bladePointDragFile_ << endl;
+                *bladePointGxFile_ << endl;
+                *bladePointGyFile_ << endl;
+                *bladePointGzFile_ << endl;
+                *bladePointdGxFile_ << endl;
+                *bladePointdGyFile_ << endl;
+                *bladePointdGzFile_ << endl;
+
                 *bladePointAxialForceFile_ << endl;
                 *bladePointHorizontalForceFile_ << endl;
                 *bladePointVerticalForceFile_ << endl;
@@ -4642,6 +4931,13 @@ void horizontalAxisWindTurbinesALMOpenFAST::printOutputFiles()
     //  *bladePointCdFile_ << endl;
     //  *bladePointLiftFile_ << endl;
     //  *bladePointDragFile_ << endl;
+        *bladePointGxFile_ << endl;
+        *bladePointGyFile_ << endl;
+        *bladePointGzFile_ << endl;
+        *bladePointdGxFile_ << endl;
+        *bladePointdGyFile_ << endl;
+        *bladePointdGzFile_ << endl;
+
         *bladePointAxialForceFile_ << endl;
         *bladePointTorqueFile_ << endl;
         *bladePointXFile_ << endl;

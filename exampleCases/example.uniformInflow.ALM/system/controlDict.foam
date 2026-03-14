@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+  application       ABLSolver;
+
+  libs              ("libSOWFAboundaryConditions.so" "libSOWFAincompressibleTurbulenceModels.so");
+
+  startFrom         startTime;
+
+  startTime         20000.0;
+
+  stopAt            endTime;
+
+  endTime           27200.0;
+
+  deltaT            0.125;
+
+  writeControl      adjustableRunTime;
+
+  writeInterval     600.0; 
+
+  purgeWrite        0;
+
+  writeFormat       binary;
+
+  writePrecision    12;
+
+  writeCompression  uncompressed;
+
+  timeFormat        general;
+
+  timePrecision     12;
+
+  runTimeModifiable yes;
+
+  adjustTimeStep    no;
+
+  maxCo             0.75;
+
+  maxDeltaT         25.0;
+
+  functions
+  {
+     #include "./system/sampling/arrayStructured.global.4D.1"
+     #include "./system/sampling/arrayStructured.global.9D.1"
+     #include "./system/sampling/arrayStructured.local.4D.1"
+     #include "./system/sampling/arrayStructured.local.4D.2"
+     #include "./system/sampling/arrayStructured.local.4D.3"
+     #include "./system/sampling/arrayStructured.local.4D.4"
+     #include "./system/sampling/arrayStructured.local.4D.5"
+     #include "./system/sampling/arrayStructured.local.9D.1"
+     #include "./system/sampling/arrayStructured.local.9D.2"
+     #include "./system/sampling/arrayStructured.local.9D.3"
+     #include "./system/sampling/arrayStructured.local.9D.4"
+     #include "./system/sampling/arrayStructured.local.9D.5"
+     #include "./system/sampling/sliceDataInstantaneous"
+  }
+
+// ************************************************************************* //
+

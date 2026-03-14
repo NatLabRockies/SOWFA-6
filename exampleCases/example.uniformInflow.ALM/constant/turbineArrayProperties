@@ -1,0 +1,88 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.0.x                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      turbineProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+globalProperties
+{
+    outputControl                    "timeStep";
+//  outputControl                    "runTime";
+    outputInterval                    1;
+    
+    dryRun                            false;
+    restart                           false;
+
+    superControllerOn                 true;
+    superControllerLib               "libScontroller.so";
+    numSuperControllerInputs          4;
+    numSuperControllerOutputs         2;
+
+    timeSimulationStart               0.0;
+    timeSimulationEnd               1000.0;
+
+    checkPointInterval              10000;    
+}
+
+
+turbine0
+{
+    turbineType                      "Generic12MW";
+    FASTInputFileName                "nrel5mw.fst";
+    FASTRestartFileName              "Model.0.chkpt";
+    nFASTSubSteps                     10;
+    includeNacelle                    true;
+    includeTower                      false;
+    baseLocation                     (0.0 0.0 -90.0);
+    numBladePoints                    300;
+    numNacellePoints                  1;
+    numTowerPoints                    40;
+    bladePointDistType               "uniform";
+    nacellePointDistType             "uniform";
+    towerPointDistType               "uniform";
+    bladeSearchCellMethod            "disk";
+    bladeActuatorPointInterpType     "linear";
+    nacelleActuatorPointInterpType   "linear";
+    towerActuatorPointInterpType     "linear";
+    actuatorUpdateType               "oldPosition";
+    bladeForceProjectionType         "uniformGaussian";
+    //bladeForceProjectionType         "variableUniformGaussianChord";
+    nacelleForceProjectionType       "diskGaussian";
+    towerForceProjectionType         "diskGaussian";
+    bladeForceProjectionDirection    "sampledVelocityAligned";
+    //bladeEpsilon                     (0.80 1.1 10.0);
+    bladeEpsilon                     (10.0 1.1 10.0);
+    nacelleEpsilon                   (2.5 2.5 0.0);
+    towerEpsilon                     (2.5 5.0 0.0);
+    nacelleSampleDistance             3.0;
+    towerSampleDistance               4.0;
+    nacelleLength                     20.0;
+    nacelleFrontalArea                30.0;
+    nacelleCd                         0.5;
+    velocityDragCorrType             "none";
+    tipRootLossCorr
+    {
+         tipRootLossCorrField             "none";
+        // tipRootLossCorrType              "none";
+         tipRootLossCorrType              "fllt";
+    }
+    rotationDir                      "cw";
+//  rotationDir                      "ccw";
+    Azimuth                           0.0;
+    RotSpeed                          9.1552;
+    TorqueGen                         0.0;
+    Pitch                             0.0;
+    NacYaw                          270.0;
+    fluidDensity                      1.225;
+}
