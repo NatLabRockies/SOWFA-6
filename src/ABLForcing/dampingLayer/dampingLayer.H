@@ -74,9 +74,6 @@ class dampingLayer
             const volFieldType& field_;
 
 
-        //- Damping source field
-        volFieldType source_;
-
         //- Distance field
       //volScalarField sourceStrength_;
 
@@ -146,6 +143,10 @@ class dampingLayer
 
         //- Damping strength
         List<List<scalar> > dampingStrength_;
+
+        //- Damping source field
+        volFieldType source_;
+
 
         
 

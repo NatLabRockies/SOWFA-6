@@ -244,9 +244,7 @@ void Foam::dampingLayer<Type>::findBoundaryNormal()
             forAll (boundaryPointsLocal, i)
             {
                 scalar faceArea = mag(mesh_.Sf().boundaryField()[patchNum][i]);
-                point a = mesh_.Cf().boundaryField()[patchNum][i];
                 boundaryPoint += boundaryPointsLocal[i] * faceArea;
-              //Pout << "boundaryPoint = " << boundaryPointsLocal[i] << tab << "a = " << a << endl;
             }
         }
         reduce(boundaryPoint, sumOp<vector>());
@@ -426,11 +424,13 @@ void Foam::dampingLayer<Type>::update()
 
 // Function to compare sources from multiple damping layers where they overlap and choose
 // the maximum.  This is done component-wise.
+template<>
 void Foam::dampingLayer<scalar>::setSource(scalar& sourceIn, scalar& sourceOut)
 {
     sourceOut = Foam::mag(sourceIn) > Foam::mag(sourceOut) ? sourceIn : sourceOut;
 }
 
+template<>
 void Foam::dampingLayer<vector>::setSource(vector& sourceIn, vector& sourceOut)
 {
     sourceOut.x() = Foam::mag(sourceIn.x()) > Foam::mag(sourceOut.x()) ? sourceIn.x() : sourceOut.x();
@@ -438,6 +438,7 @@ void Foam::dampingLayer<vector>::setSource(vector& sourceIn, vector& sourceOut)
     sourceOut.z() = Foam::mag(sourceIn.z()) > Foam::mag(sourceOut.z()) ? sourceIn.z() : sourceOut.z();
 }
 
+template<>
 void Foam::dampingLayer<symmTensor>::setSource(symmTensor& sourceIn, symmTensor& sourceOut)
 {
     sourceOut.xx() = Foam::mag(sourceIn.xx()) > Foam::mag(sourceOut.xx()) ? sourceIn.xx() : sourceOut.xx();
@@ -448,6 +449,7 @@ void Foam::dampingLayer<symmTensor>::setSource(symmTensor& sourceIn, symmTensor&
     sourceOut.zz() = Foam::mag(sourceIn.zz()) > Foam::mag(sourceOut.zz()) ? sourceIn.zz() : sourceOut.zz();
 }
 
+template<>
 void Foam::dampingLayer<tensor>::setSource(tensor& sourceIn, tensor& sourceOut)
 {
     sourceOut.xx() = Foam::mag(sourceIn.xx()) > Foam::mag(sourceOut.xx()) ? sourceIn.xx() : sourceOut.xx();
