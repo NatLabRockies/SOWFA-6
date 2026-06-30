@@ -30,6 +30,31 @@ Description
     be applied to any field.
 
 Usage
+    \table
+        Property     | Description             | Required    | Default value
+        patchType    | underlying patch type should be \c cyclic| yes |
+        jumpTable    | jump value              | yes         |
+    \endtable
+
+    Example of the boundary condition specification:
+    \verbatim
+    <patchName>
+    {
+        type            uniformJump;
+        patchType       cyclic;
+        jumpTable       constant 10;
+    }
+    \endverbatim
+
+    The above example shows the use of a fixed jump of '10'.
+
+Note
+    The referenceValue entry is a Function1 type, able to describe height
+    varying functions.  The example above gives the usage for supplying a
+    constant value.
+
+See also
+    Foam::Function1Types
 
 SourceFiles
     dampingLayer.C
@@ -42,6 +67,7 @@ SourceFiles
 #include "scalar.H"
 #include "fvCFD.H"
 #include "IOdictionary.H"
+#include "Function1.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -120,7 +146,8 @@ class dampingLayer
         List<scalar> dampingTimeScale_;
 
         //- Reference value to damp field toward
-        List<Type> referenceValue_;
+       #List<Type> referenceValue_;
+        List<autoPtr<Function1<Type>>> referenceValue_;
         
         //- Component directions of the field to damp.  For example, if 
         //  it is the velocity field, you can damp any combination of 
