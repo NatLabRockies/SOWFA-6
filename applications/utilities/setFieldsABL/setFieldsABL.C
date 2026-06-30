@@ -46,6 +46,7 @@ Description
 #include "interpolateSplineXY.H"
 #include "Random.H"
 #include "wallDist.H"
+#include "fixedFluxPressureFvPatchScalarField.H"
 #include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -432,10 +433,17 @@ if (updateInternalFields)
 }
 
 
+
 // Update the boundary field.
 if (updateBoundaryFields)
 {
     Info << "Updating boundaries..." << endl;
+    surfaceScalarField Us(fvc::flux(U));
+    setSnGrad<fixedFluxPressureFvPatchScalarField>
+    (
+        p_rgh.boundaryFieldRef(),
+        0.0*Us.boundaryField()
+    );
     U.correctBoundaryConditions();
     T.correctBoundaryConditions();
     p_rgh.correctBoundaryConditions();
