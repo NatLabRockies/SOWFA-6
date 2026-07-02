@@ -111,7 +111,6 @@ void Foam::dampingLayer<Type>::readSubDict()
 
         blendingFraction_[m] = subSubDict.lookupOrDefault<scalar>("blendingFraction",1.0);
 
-      //referenceValue_[m] = subSubDict.lookupOrDefault<Type>("referenceValue", Zero);
         referenceValue_[m] = Function1<Type>::New("referenceValue",subSubDict);
 
         dampedComponents_[m] = subSubDict.lookupOrDefault<Type>("dampedComponents", Zero);
@@ -413,7 +412,7 @@ void Foam::dampingLayer<Type>::update()
             }
 
           //Type diff = referenceValue_[m] - field_[cellID];
-            Type diff = referenceValue_[m]->value(z) - field_[cellID];
+            Type diff = referenceValue_[m]->value(meshPoint.z()) - field_[cellID];
 
             // The final source is s = (1/tau) * strength * componentMask * (u_ref - u)
             Type source = (1.0 / dampingTimeScale_[m]) * dampingStrength_[m][j] * cmptMultiply(diff,dampedComponents_[m]);

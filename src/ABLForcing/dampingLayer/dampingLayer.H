@@ -146,7 +146,6 @@ class dampingLayer
         List<scalar> dampingTimeScale_;
 
         //- Reference value to damp field toward
-       #List<Type> referenceValue_;
         List<autoPtr<Function1<Type>>> referenceValue_;
         
         //- Component directions of the field to damp.  For example, if 
