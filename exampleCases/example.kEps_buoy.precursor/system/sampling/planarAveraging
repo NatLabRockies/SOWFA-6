@@ -1,0 +1,17 @@
+      planarAveraging
+      {
+          #include        "../../constant/physicalProperties" 
+          type                 planarAveraging;
+          functionObjectLibs   ("libSOWFAfieldFunctionObjects.so");
+          enabled              $writePlanarAverage;
+          writeControl         timeStep;
+          writeInterval        $writePlanarAverageInterval;
+          fields
+          (
+              U
+              T
+              k
+              epsilon
+              nut
+          );
+      }

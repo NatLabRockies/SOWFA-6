@@ -1,0 +1,22 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+boundaryData
+{
+    type            surfaces;
+    functionObjectLibs ( "libsampling.so" "libSOWFAfileFormats.so" );
+    enabled         true;
+    interpolationScheme isThisNeeded;
+    writeControl    timeStep;
+    writeInterval   1;
+    surfaceFormat   boundaryData;
+    fields          ( U T k );
+    surfaces        ( south { type patch ; patches ( south ) ; triangulate false ; } north { type patch ; patches ( north ) ; triangulate false ; } west { type patch ; patches ( west ) ; triangulate false ; } east { type patch ; patches ( east ) ; triangulate false ; } );
+}
+
+
+// ************************************************************************* //
