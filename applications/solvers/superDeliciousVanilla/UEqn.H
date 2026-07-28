@@ -13,7 +13,7 @@
       + hurricaneMesoTerm.source()
       + momentumDampingLayers.source()
       + momentumPerturbationZones.source()
-      + (1.0 - scalar(bodyForceStabilization)) * actuatorTurbineArray.source()
+      //+ (1.0 - scalar(bodyForceStabilization)) * actuatorTurbineArray.source()
       + fvOptions(U)
     );
 
@@ -32,7 +32,7 @@
                 (
                   - fvc::snGrad(p_rgh)
                   + Boussinesq.source()
-                  + scalar(bodyForceStabilization) * fvc::flux(actuatorTurbineArray.source())/mesh.magSf()
+                  //+ scalar(bodyForceStabilization) * fvc::flux(actuatorTurbineArray.source())/mesh.magSf()
                 )*mesh.magSf()
             )
         );

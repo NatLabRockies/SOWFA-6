@@ -191,6 +191,14 @@ kEps_buoy<BasicTurbulenceModel>::kEps_buoy
     {
         this->printCoeffs(type);
     }
+    
+//    Info << "DEBUG: T_ address = "
+//         << &(this->T_)
+//         << endl;
+//    
+//    Info << "DEBUG: T_ name = "
+//         << this->T_.name()
+//         << endl;
 }
 
 
@@ -251,13 +259,31 @@ void kEps_buoy<BasicTurbulenceModel>::correct()
     // Update epsilon and G at the wall
     epsilon_.boundaryFieldRef().updateCoeffs();
     
-    // Compute the buoyancy-production term.
+    Info<< "DEBUG before T gradient" << nl;
+    Info << "T address: " << &this->T_ << nl;
+    Info<< "T size: " << this->T_.size() << nl;
+    Info<< "T min: " << gMin(this->T_) << nl;
+    Info<< "T max: " << gMax(this->T_) << nl;
+    
+    tmp<volVectorField> gradT = fvc::grad(this->T_);
+    
+    Info<< "DEBUG after T gradient" << nl;
+    
     volScalarField::Internal B
     (
         "B",
         (1.0/this->TRef_)
-       *(this->g_ & (nut/this->Prt_) * fvc::grad(this->T_))()
+       *(this->g_ & (nut/this->Prt_) * gradT())()
     );
+    
+    
+    // Compute the buoyancy-production term.
+//    volScalarField::Internal B
+//    (
+//        "B",
+//        (1.0/this->TRef_)
+//       *(this->g_ & (nut/this->Prt_) * fvc::grad(this->T_))()
+//    );
 
     // Dissipation equation
     tmp<fvScalarMatrix> epsEqn

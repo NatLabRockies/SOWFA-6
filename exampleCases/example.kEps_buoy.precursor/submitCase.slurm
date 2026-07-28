@@ -20,13 +20,13 @@ solver=superDeliciousVanilla
 blockMesh > log.blockMesh 2>&1
 
 
-
-if [ ! -d "processor0" ]; then
-        echo "*=* No decomposition found. Running decomposePar. *=*"
-        decomposePar > log.decomposePar 2>&1
-else
-        echo "*=* Decomposition already exists. Skipping decomposePar. *=*"
-fi
+# Decompose large cases
+#if [ ! -d "processor0" ]; then
+#        echo "*=* No decomposition found. Running decomposePar. *=*"
+#        decomposePar > log.decomposePar 2>&1
+#else
+#        echo "*=* Decomposition already exists. Skipping decomposePar. *=*"
+#fi
 
 #running in parallel
 #srun -n 128 setFieldsABL -parallel > log.setFieldsABL 2>&1

@@ -14,7 +14,7 @@
     surfaceScalarField phig(rAUf * Boussinesq.source() * mesh.magSf());
 
     // This is the actuator line/disk body force term multiplied by the inverse of the A operator.
-    surfaceScalarField phiF(rAUf * scalar(bodyForceStabilization) * fvc::flux(actuatorTurbineArray.source()));
+    //surfaceScalarField phiF(rAUf * scalar(bodyForceStabilization) * fvc::flux(actuatorTurbineArray.source()));
 
     // Project HbyA to cell faces and apply a correction for time stepping scheme.
     surfaceScalarField phiHbyA
@@ -41,7 +41,7 @@
     }
 
     phiHbyA += phig;
-    phiHbyA += phiF;
+    //phiHbyA += phiF;
 
     // Update the fixedFluxPressure BCs to ensure flux consistency
     setSnGrad<fixedFluxPressureFvPatchScalarField>
@@ -80,8 +80,9 @@
 
             // Correct the momentum source with the pressure gradient flux
             // calculated from the relaxed pressure
-            U = HbyA + rAU*fvc::reconstruct((phig + phiF - p_rghEqn.flux())/rAUf);
-            U.correctBoundaryConditions();
+            //U = HbyA + rAU*fvc::reconstruct((phig + phiF - p_rghEqn.flux())/rAUf);
+            U = HbyA + rAU*fvc::reconstruct((phig - p_rghEqn.flux())/rAUf);
+	    U.correctBoundaryConditions();
             fvOptions.correct(U);
         }
     }

@@ -71,8 +71,10 @@ Foam::eddyViscosity<BasicTurbulenceModel>::eddyViscosity
 
     kappatName_("kappat"),
 
-    T_(U.db().lookupObject<volScalarField>(TName_)),
-
+    //T_(U.db().lookupObject<volScalarField>("TName")),
+    
+    T_(U.db().lookupObject<volScalarField>("T")),
+    
     g_(U.db().lookupObject<uniformDimensionedVectorField>("g")),
 //    g_
 //      (

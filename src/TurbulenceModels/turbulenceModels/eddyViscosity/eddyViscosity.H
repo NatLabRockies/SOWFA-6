@@ -66,7 +66,7 @@ protected:
         virtual void correctNut() = 0;
 
    // Required for the buoyancy term calculation
-	word TName_;
+        word TName_;
 
         word kappatName_;
 
