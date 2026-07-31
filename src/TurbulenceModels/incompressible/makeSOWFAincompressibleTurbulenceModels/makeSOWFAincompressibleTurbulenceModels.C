@@ -36,4 +36,8 @@ License
 #include "kEqnABL.H"
 makeLESModel(kEqnABL);
 
+// ---kEpsilon modified to include Buoyancy--------- //
+#include "kEps_buoy.H"
+makeRASModel(kEps_buoy);
+
 // ************************************************************************* //

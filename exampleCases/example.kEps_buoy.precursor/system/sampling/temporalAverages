@@ -1,0 +1,19 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+temporalAverages
+{
+    type            temporalAveraging;
+    functionObjectLibs ( "libSOWFAfieldFunctionObjects.so" );
+    enabled         false;
+    writeControl    writeTime;
+    timeStart       1000;
+    fields          ( U { mean on ; prime2Mean on ; primeUPrimeMean off ; base time ; } T { mean on ; prime2Mean on ; primeUPrimeMean on ; base time ; } p_rgh { mean on ; prime2Mean on ; primeUPrimeMean off ; base time ; } );
+}
+
+
+// ************************************************************************* //

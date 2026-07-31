@@ -1,0 +1,198 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  6
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+#include        "../constant/physicalProperties"
+//#include        "../setUp"
+
+
+
+
+convertToMeters 1.0;
+
+vertices        
+(
+    ( $xMin   $yMin   $zMin)
+    ( $xMax   $yMin   $zMin)
+    ( $xMax   $yMax   $zMin)
+    ( $xMin   $yMax   $zMin)
+    ( $xMin   $yMin   $zMax1)
+    ( $xMax   $yMin   $zMax1)
+    ( $xMax   $yMax   $zMax1)
+    ( $xMin   $yMax   $zMax1)
+
+    ( $xMin   $yMin   $zMin2)
+    ( $xMax   $yMin   $zMin2)
+    ( $xMax   $yMax   $zMin2)
+    ( $xMin   $yMax   $zMin2)
+    ( $xMin   $yMin   $zMax2)
+    ( $xMax   $yMin   $zMax2)
+    ( $xMax   $yMax   $zMax2)
+    ( $xMin   $yMax   $zMax2)
+
+    ( $xMin   $yMin   $zMin3)
+    ( $xMax   $yMin   $zMin3)
+    ( $xMax   $yMax   $zMin3)
+    ( $xMin   $yMax   $zMin3)
+    ( $xMin   $yMin   $zMax3)
+    ( $xMax   $yMin   $zMax3)
+    ( $xMax   $yMax   $zMax3)
+    ( $xMin   $yMax   $zMax3)
+
+    ( $xMin   $yMin   $zMin4)  
+    ( $xMax   $yMin   $zMin4)
+    ( $xMax   $yMax   $zMin4)
+    ( $xMin   $yMax   $zMin4)
+    ( $xMin   $yMin   $zMax)
+    ( $xMax   $yMin   $zMax)
+    ( $xMax   $yMax   $zMax)
+    ( $xMin   $yMax   $zMax)
+);
+
+blocks          
+(
+    hex ( 0  1  2  3  4  5  6  7) ($nx1 $ny1 $nz1) simpleGrading (1 1 1)
+    hex ( 8  9 10 11 12 13 14 15) ($nx2 $ny2 $nz2) simpleGrading (1 1 1)
+    hex (16 17 18 19 20 21 22 23) ($nx3 $ny3 $nz3) simpleGrading (1 1 1)
+    hex (24 25 26 27 28 29 30 31) ($nx4 $ny4 $nz4) simpleGrading (1 1 1)
+);
+
+edges           
+(
+);
+
+boundary
+(
+    interface12
+    {
+        type patch;
+        faces
+        (
+            ( 4  5  6  7)
+        );
+    }
+    interface21
+    {
+        type patch;
+        faces
+        (
+            ( 8 11 10  9)
+        );
+    }
+    interface23
+    {
+        type patch;
+        faces
+        (
+            (12 13 14 15)
+        );
+    }
+    interface32
+    {
+        type patch;
+        faces
+        (
+            (16 19 18 17)
+        );
+    }
+    interface34
+    {
+        type patch;
+        faces
+        (
+            (20 21 22 23)
+        );
+    }
+    interface43
+    {
+        type patch;
+        faces
+        (
+            (24 27 26 25)
+        );
+    }
+    bottom //lower
+    {
+        type wall;
+        faces
+        (
+            ( 0  3  2  1)
+        );
+    }
+    top //upper
+    {
+        type patch;
+        faces
+        (
+            (28 29 30 31)
+        );
+    }
+    west
+    { 
+        type cyclic;
+        neighbourPatch east;
+        faces
+        (
+            ( 0  4  7  3)
+            ( 8 12 15 11)
+            (16 20 23 19)
+            (24 28 31 27)
+        );
+    }
+    east
+    { 
+        type cyclic;
+        neighbourPatch west;
+        faces
+        (
+            ( 1  2  6  5)
+            ( 9 10 14 13)
+            (17 18 22 21)
+            (25 26 30 29)
+        );
+    }
+    north
+    { 
+        type cyclic;
+        neighbourPatch south;
+        faces
+        (
+            ( 3  7  6  2)
+            (11 15 14 10)
+            (19 23 22 18)
+            (27 31 30 26)
+        );
+    }
+    south
+    { 
+        type cyclic;
+        neighbourPatch north;
+        faces
+        (
+            ( 0  1  5  4)
+            ( 8  9 13 12)
+            (16 17 21 20)
+            (24 25 29 28)
+        );
+    }
+);
+
+mergePatchPairs
+(
+  (interface12 interface21)
+  (interface23 interface32)
+  (interface34 interface43)
+);
+
+// ************************************************************************* //

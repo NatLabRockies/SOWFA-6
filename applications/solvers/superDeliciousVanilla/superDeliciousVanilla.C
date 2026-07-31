@@ -49,7 +49,7 @@ Description
 #include "pimpleControl.H"
 #include "ABL.H"
 #include "adjustPhiExtended.H"
-#include "horizontalAxisWindTurbinesALMOpenFAST.H"
+//#include "horizontalAxisWindTurbinesALMOpenFAST.H"
 #include "simpleMeshSearch.H"
 
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
         // - perturbation zone forcing.
         momentumPerturbationZones.update();
         temperaturePerturbationZones.update();
-        actuatorTurbineArray.update();
+        //actuatorTurbineArray.update();
         hurricaneMesoTerm.update();
 
 
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
              << nl << nl << nl << nl << endl;
     }
 
-    actuatorTurbineArray.end();
+    //actuatorTurbineArray.end();
 
     Info << "Ending the simulation" << endl;
 

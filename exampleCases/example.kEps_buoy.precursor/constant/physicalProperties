@@ -1,0 +1,168 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.com
+    \\  /    A nd           | Version:  2006
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version	2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      physicalProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Physical Constants
+
+nu              [0 2 -1 0 0 0 0] 0.0000185;
+rho		1.225;
+gravity		(0 0 -9.81);
+
+// Reference temperature
+TRef           TRef [0 0 0 1 0 0 0] 300.0;
+
+// Prandtl numbers
+Pr              Pr [0 0 0 0 0 0 0] 0.7;
+Prt             Prt [0 0 0 0 0 0 0] 0.74; //0.33333333;
+
+viscosityModel	Newtonian;
+// ************************************************************************* //
+
+
+// canopy model constants
+//Ct		0.8;
+sigma		10;
+beta_P		1.00;
+
+// ABL values
+Zref		90.0;
+Uref		9.8;
+z0		1e-5;
+kappa		0.42;
+d		0.0;
+
+sigustar	2.4;
+sigvstar	2.1;
+sigwstar	1.25;
+
+// k-epsilon constants
+Cmu		#calc "1/pow(0.5*(pow($sigustar,2) + pow($sigvstar,2) + pow($sigwstar,2)),2)";
+C1		1.668; //C2 - k^2/sigmaEps(Cmn)^0.5; //1.44;
+C2		1.92;
+C3		0.748; //#calc "1 + C1 - C2"; //0.0;
+sigmak		1.0;
+sigmaEps	1.3; //#calc "pow($kappa,2)/(($C2 - $C1)*pow($Cmu,0.5))";
+
+alpha 		0.05;
+beta_D		#calc "pow($Cmu,0.5) * pow((2.0/$alpha),(2.0/3.0)) * $beta_P + 3.0/$sigmak";
+
+phi		#calc "1.0";
+
+Ceps5		#calc "(6.0 / $sigmaEps - pow($Cmu,0.5) * pow((2.0/$alpha),(2.0/3.0)) * ($C2 - $C1)/2.0) / (3.0 / $sigmak + (1.0 - $phi) * $beta_P * pow($Cmu,0.5) * pow((2.0/$alpha),(2.0/3.0)) )";
+Ceps4		#calc "$phi * $Ceps5";
+
+// Turbulence constants
+turbulence_intensity 	#calc "(2.4 * $kappa) / (log($Zref / $z0)) "; //[fraction]
+l                       #calc "($turbulence_intensity) * $sigma"; // [m]
+
+// Initial values
+//U_star		#calc "($Uref*$kappa)/(log($Zref/$z0))";
+U_star 		#calc "($Uref*$kappa)/(log(($Zref+$z0)/$z0))";
+U0		(0.0 -9.8 0.0); //#calc "$Uref";
+k0		#calc "pow($U_star,2)/pow($Cmu,0.5)";
+epsilon0	#calc "pow($U_star,3)/($kappa*$Zref)";
+nut0		#calc "$Cmu*pow($k0,2)/$epsilon0";
+T0		300.0;
+latitude             54.459;
+EarthPeriod          24.0;                       //rotation period in hours
+qwall               (0.0 0.0 0.0);
+Rwall               (0.0 0.0 0.0 0.0 0.0 0.0);
+kappat0              0.0;
+p_rgh0               0.0;
+
+TGradUpper           0.0052;                       // Potential temperature gradient above the strong inversion (K/m).
+zInversion           700.0;                       // Height of the middle of the initial strong capping inversion (m).
+inversionWidth       600.0;                       // Vertical width of the intial strong capping inversion (m).
+TBottom              300.0;                       // Initial potential temperature at bottom of strong capping inversion (K).
+TTop                 306.0;                       // Initial potential temperature at top of strong capping inversion (K).
+
+// - This is all for simple, single height, time-invariant, P-control.
+// - For more complex configurations, see constant/ABLProperties.
+
+windControlHeight    90.0;                       // The height at which the mean wind is specified (m).
+windSpeed             9.8;                        // The specified mean wind speed at that height (m/s).
+windDir              0.0;                       // The specified mean wind direction at that height (degrees).
+
+writeSource                 false; //inputs to ABLProperties
+writeSourceInterval         1;
+
+// - This creates a simple uniform hexahedral mesh
+
+xMin                   0.0;                         // Minimum x-extent of domain (m).
+yMin                 -100.0;                         // Minimum y-extent of domain (m).
+xMax                 500.0;                      // Maximum x-extent of domain (m).
+yMax                  100.0;                      // Maximum y-extent of domain (m).
+
+// Domain heights and number of cells (level 1).
+zMin                     0.0;                      // Minimum z-extent of domain (m).
+zMax1                  400.0;                      // Maximum z-extent of domain (m).
+nx1                      5;                      // Number of cells in x-direction.
+ny1                      2;                      // Number of cells in y-direction.
+nz1                      40;                      // Number of cells in z-direction.
+
+// Domain heights and number of cells (level 2).
+zMin2                  400.0;                      // Minimum z-extent of domain (m).
+zMax2                  2000.0;                      // Maximum z-extent of domain (m).
+nx2                        5;                      // Number of cells in x-direction.
+ny2                        2;                      // Number of cells in y-direction.
+nz2                       160;                      // Number of cells in z-direction.
+
+// Domain heights and number of cells (level 3).
+zMin3                  2000.0;                      // Minimum z-extent of domain (m).
+zMax3                 3000.0;                      // Maximum z-extent of domain (m).
+nx3                        5;                      // Number of cells in x-direction.
+ny3                        2;                      // Number of cells in y-direction.
+nz3                       50;                      // Number of cells in z-direction.
+
+// Domain heights and number of cells (level 4).
+zMin4                 3000.0;                      // Minimum z-extent of domain (m).
+zMax                  12000.0;                      // Maximum z-extent of domain (m).
+nx4                        5;                      // Number of cells in x-direction.
+ny4                        2;                      // Number of cells in y-direction.
+nz4                      180;                      // Number of cells in z-direction.
+
+
+
+
+// Number of cores and domain decomposition information.
+// * Used by decomposePar in 'system/decomposeParDict'
+//
+// - The common decomposistion algorithms are simple and scotch.
+//   Simple scales better for large problems on nice regular meshes,
+//   but scotch is geometrically general.
+//nCores               128;                         // Number of cores on which to run this case.
+//decompType           scotch;                      // Decomposition algorithm.  "simple" and "scotch" are good choices.
+//decompOrder          (8 1 16);                     // Order of the decomposition number of partitions in (x y z)-directions (only for simple).
+
+
+
+// Planar averaging and source term statistics options.
+// * Used by the planarAveraging function object in 'system/sampling/planarAveraging'
+writeSource                 true;
+writeSourceInterval         1;
+writePlanarAverage          true;
+writePlanarAverageInterval  1;
+
+Info << " " << endl;
+Info << "physicalProperties:" << endl;
+Info << " " << endl;
+Info << "Turbulence Intensity: " << turbulence_intensity << endl;
+Info << "Initial velocity: " << U0 << endl;
+Info << "Initial TKE: " << k0 << endl;
+Info << "Intial epsilon: " << epsilon0 << endl;
+Info << "Initial viscosity: " << nut0 << endl;
+Info << "" << endl;
+

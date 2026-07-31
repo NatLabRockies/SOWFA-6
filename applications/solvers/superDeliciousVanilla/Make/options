@@ -23,6 +23,8 @@ EXE_INC = \
 
 EXE_LIBS = \
     -L$(SOWFA_LIBBIN) \
+    -lSOWFAturbulenceModels \
+    -lSOWFAincompressibleTurbulenceModels \
     -lturbulenceModels \
     -lincompressibleTurbulenceModels \
     -lincompressibleTransportModels \
@@ -34,32 +36,32 @@ EXE_LIBS = \
     -lSOWFAABLForcing \
     -lSOWFAmeshTools \
     -lSOWFAmiscTools \
-    -lSOWFATurbineModelsOpenFAST \
-    -L$(OPENFAST_DIR)/lib \
-    -laerodyn14lib \
-    -laerodynlib \
-    -lbeamdynlib \
-    -lelastodynlib \
-    -lextptfm_mckflib \
-    -lfeamlib \
-    -lfoamfastlib \
-    -lhydrodynlib \
-    -licedynlib \
-    -licefloelib \
-    -lifwlib \
-    -lmaplib \
-    -lmoordynlib \
-    -lnwtclibs \
-    -lopenfastcpplib \
-    -lopenfastlib \
-    -lopenfast_postlib \
-    -lopenfast_prelib \
-    -lfoamtypeslib \
-    -lorcaflexlib \
-    -lscfastlib \
-    -lsctypeslib \
-    -lservodynlib \
-    -lsubdynlib \
+    #-lSOWFATurbineModelsOpenFAST \
+    #-L$(OPENFAST_DIR)/lib \
+    #-laerodyn14lib \
+    #-laerodynlib \
+    #-lbeamdynlib \
+    #-lelastodynlib \
+    #-lextptfm_mckflib \
+    #-lfeamlib \
+    #-lfoamfastlib \
+    #-lhydrodynlib \
+    #-licedynlib \
+    #-licefloelib \
+    #-lifwlib \
+    #-lmaplib \
+    #-lmoordynlib \
+    #-lnwtclibs \
+    #-lopenfastcpplib \
+    #-lopenfastlib \
+    #-lopenfast_postlib \
+    #-lopenfast_prelib \
+    #-lfoamtypeslib \
+    #-lorcaflexlib \
+    #-lscfastlib \
+    #-lsctypeslib \
+    #-lservodynlib \
+    #-lsubdynlib \
     $(BLASLIB) \
     -L$(HDF5_DIR)/lib/ \
     -lhdf5_hl \
