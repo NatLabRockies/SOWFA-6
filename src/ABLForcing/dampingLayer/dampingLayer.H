@@ -118,6 +118,9 @@ class dampingLayer
         //- Field for storing height above the ground
         volScalarField zAgl_;
 
+        //- Capping inversion height
+        scalar zi_;
+
         //- Number of components in damped field
         label nComponents_;
 

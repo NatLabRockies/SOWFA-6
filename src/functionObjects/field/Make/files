@@ -6,5 +6,7 @@ temporalAveraging/temporalAveragingItem/temporalAveragingItemIO.C
 
 geometricBlendingFactor/geometricBlendingFactor.C
 
+cappingInversionStatistics/cappingInversionStatistics.C
+
 
 LIB = $(SOWFA_LIBBIN)/libSOWFAfieldFunctionObjects

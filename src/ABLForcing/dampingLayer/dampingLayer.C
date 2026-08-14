@@ -81,6 +81,12 @@ void Foam::dampingLayer<Type>::initialize()
     findBoundaryNormal();
     findDistanceFromBoundary();
     setDampingStrength();
+
+    bool ziFound = mesh_.foundObject<uniformDimensionedScalarField>("zi");
+    Info << "Capping inversion height found: " << ziFound << endl;
+    //const uniformDimensionedScalarField& zi = mesh_.lookupObject<uniformDimensionedScalarField>("zi");
+    //zi_ = zi.value();
+    //Info << "Capping inversion height from Rayleigh damping = " << zi_ << endl;
 }
 
 
