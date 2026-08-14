@@ -49,29 +49,29 @@ void Foam::meshPlanes::findPlanes_()
 
     forAll(mesh_.cells(),cellI)
     {
-	    const vector& cellCenter = mesh_.C()[cellI];
-    	int planesFlag = 0;
-        if(cellI == 0)
-	    {
-	        planeLocationValuesP.append(cellCenter[normalIndex_]);
-	        numberOfPlanes_++;
-	    }
-	    else
-	    {
-	        forAll(planeLocationValuesP,planeI)
-	        {
-	            const scalar loc = planeLocationValuesP[planeI];
-		        if(mag(cellCenter[normalIndex_] - loc) < tol_)
-		        {
+        const vector& cellCenter = mesh_.C()[cellI];
+        int planesFlag = 0;
+        if (cellI == 0)
+        {
+            planeLocationValuesP.append(cellCenter[normalIndex_]);
+            numberOfPlanes_++;
+        }
+        else
+        {
+            forAll(planeLocationValuesP,planeI)
+            {
+                const scalar loc = planeLocationValuesP[planeI];
+                if (mag(cellCenter[normalIndex_] - loc) < tol_)
+                {
                     planesFlag = 1;
-		        }
-	        }
-	        if(planesFlag == 0)
-	        {
-	            planeLocationValuesP.append(cellCenter[normalIndex_]);
-		        numberOfPlanes_++;
-	        }
-	    }
+                }
+            }
+            if (planesFlag == 0)
+            {
+                planeLocationValuesP.append(cellCenter[normalIndex_]);
+                numberOfPlanes_++;
+            }
+        }
     }
     reduce(numberOfPlanes_,sumOp<label>());
 
@@ -93,30 +93,30 @@ void Foam::meshPlanes::findPlanes_()
         {
             forAll(planeLocationValuesM[ListI],ListJ)
             {
-	            label planesFlag = 0;
-	            if(I == 0)
-	            {
-	                planeLocationValues_Unsrt.append(planeLocationValuesM[ListI][ListJ]);
-		            numberOfPlanes_++;
-	            }
-	            else
-	            {
-	                for(label J = 0; J < numberOfPlanes_; J++)
-	                {
-	                    const scalar loc = planeLocationValues_Unsrt[J];
-	                    if(mag(planeLocationValuesM[ListI][ListJ] - loc) < tol_)
-	  	                {
-		                    planesFlag = 1;
-		                }
-	                }
-	                if(planesFlag == 0)
-	                {
-	                    planeLocationValues_Unsrt.append(planeLocationValuesM[ListI][ListJ]);
-		                numberOfPlanes_++;
-	                }
+                label planesFlag = 0;
+                if (I == 0)
+                {
+                    planeLocationValues_Unsrt.append(planeLocationValuesM[ListI][ListJ]);
+                    numberOfPlanes_++;
+                }
+                else
+                {
+                    for (label J = 0; J < numberOfPlanes_; J++)
+                    {
+                        const scalar loc = planeLocationValues_Unsrt[J];
+                        if (mag(planeLocationValuesM[ListI][ListJ] - loc) < tol_)
+                        {
+                            planesFlag = 1;
+                        }
+                    }
+                    if (planesFlag == 0)
+                    {
+                        planeLocationValues_Unsrt.append(planeLocationValuesM[ListI][ListJ]);
+                        numberOfPlanes_++;
+                    }
                 }
                 I++;
-           }
+            }
         }
     }
     planeLocationValues_ = planeLocationValues_Unsrt;
@@ -126,20 +126,20 @@ void Foam::meshPlanes::findPlanes_()
     // Sort the height list to be in ascending order
     forAll(planeLocationValues_,planeI)
     {
-	    scalar planeLocationValuesMin = 1.0E20;
-    	scalar locValue = 0.0;
-	    label locLabelJ = 0;
-	    for(int planeJ = planeI; planeJ < numberOfPlanes_; planeJ++)
-	    {
-            if(planeLocationValues_[planeJ] < planeLocationValuesMin)
-	        {
-	            locValue = planeLocationValues_[planeJ];
-		        locLabelJ = planeJ;
-		        planeLocationValuesMin = locValue;
-	        }
-	    }
-    	planeLocationValues_[locLabelJ] = planeLocationValues_[planeI];
-	    planeLocationValues_[planeI] = locValue;
+        scalar planeLocationValuesMin = 1.0E20;
+        scalar locValue = 0.0;
+        label locLabelJ = 0;
+        for (int planeJ = planeI; planeJ < numberOfPlanes_; planeJ++)
+        {
+            if (planeLocationValues_[planeJ] < planeLocationValuesMin)
+            {
+                locValue = planeLocationValues_[planeJ];
+                locLabelJ = planeJ;
+                planeLocationValuesMin = locValue;
+            }
+        }
+        planeLocationValues_[locLabelJ] = planeLocationValues_[planeI];
+        planeLocationValues_[planeI] = locValue;
     }
 
 
@@ -151,33 +151,33 @@ void Foam::meshPlanes::findPlanes_()
    
     forAll(planeLocationValues_,planeI)
     {
-	    numCellPerPlane_.append(0);
-	    totVolPerPlaneP[planeI] = 0.0;
+        numCellPerPlane_.append(0);
+        totVolPerPlaneP[planeI] = 0.0;
         forAll(mesh_.cells(),cellI)
         {
             const vector& cellCenter = mesh_.C()[cellI];
-	        if(mag(cellCenter[normalIndex_] - planeLocationValues_[planeI]) < tol_)
-	        {
-	            numCellPerPlane_[planeI]++;
-		        totVolPerPlaneP[planeI] += mesh_.V()[cellI];
-	        }
-	    }
+            if (mag(cellCenter[normalIndex_] - planeLocationValues_[planeI]) < tol_)
+            {
+                numCellPerPlane_[planeI]++;
+                totVolPerPlaneP[planeI] += mesh_.V()[cellI];
+            }
+        }
     }
 
     forAll(planeLocationValues_,planeI)
     {
         //planesCellList_.append(List<label>(max(numCellPerPlane_)));
         planesCellList_.append(List<label>(numCellPerPlane_[planeI]));
-	    int i = 0;
+        int i = 0;
         forAll(mesh_.cells(),cellI)
-	    {
-	        const vector& cellCenter = mesh_.C()[cellI];
-	        if(mag(cellCenter[normalIndex_] - planeLocationValues_[planeI]) < tol_)
-	        {
-        		planesCellList_[planeI][i] = cellI;
-		        i++;
-    	    }
-	    }
+        {
+            const vector& cellCenter = mesh_.C()[cellI];
+            if (mag(cellCenter[normalIndex_] - planeLocationValues_[planeI]) < tol_)
+            {
+                planesCellList_[planeI][i] = cellI;
+                i++;
+            }
+        }
     }
 
     // Gather the volumes per plane to get a global value
@@ -189,8 +189,8 @@ void Foam::meshPlanes::findPlanes_()
     forAll(planeLocationValues_,planeI)
     {
         totVolPerPlane_.append(0.0);
-    	for (int n = 0; n < Pstream::nProcs(); n++)
-	    {
+        for (int n = 0; n < Pstream::nProcs(); n++)
+        {
             totVolPerPlane_[planeI] += totVolPerPlaneM[n][planeI];
         }
     }
