@@ -1,4 +1,5 @@
 meshPlanes/meshPlanes.C
+meshPencils/meshPencils.C
 simpleMeshSearch/simpleMeshSearch.C
 
 LIB = $(SOWFA_LIBBIN)/libSOWFAmeshTools

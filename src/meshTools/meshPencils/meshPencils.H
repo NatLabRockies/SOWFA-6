@@ -43,8 +43,6 @@ SourceFiles
 namespace Foam
 {
 
-// Forward declaration of classes
-
 /*---------------------------------------------------------------------------*\
                            Class meshPencils Declaration
 \*---------------------------------------------------------------------------*/
@@ -77,10 +75,13 @@ class meshPencils
         List<List<label> > pencilCellList_;
 
         //- Number of cells per pencil on a processor
-        labelList numCellPerPencil_;
+        List<label> numCellPerPencil_;
 
-        //- List of plane locations
-        List<Pair<scalar>> pencilLocations_;
+        //- List of pencil locations
+        pointField pencilLocations_;
+
+        //- Tolerance
+        scalar tol_;
 
         //- Initialization flag
         bool initialized_;
@@ -94,14 +95,33 @@ class meshPencils
 
 public:
 
+    // Public class
+
+        // To combineReduce a List. Just appends all lists.
+        template<class T>
+        class ListPlusEqOp
+        {
+
+        public:
+
+            void operator()(T& x, const T& y) const
+            {
+                label n = x.size();
+
+                x.setSize(x.size() + y.size());
+
+                forAll(y, i)
+                {
+                    x[n++] = y[i];
+                }
+            }
+        };
+
+
+
     //- Declare name of the class and its debug switch
     ClassName("meshPencils");
 
-
-    // Static member data
-
-        //- tolerance on plane locations
-        static scalar tol_;
 
 
     // Constructors
@@ -110,9 +130,9 @@ public:
         meshPencils
         (
             const fvMesh& mesh,
-            const word& direction,
             const scalar extentLowerLim,
-            const scalar extentUpperLim
+            const scalar extentUpperLim,
+            const word direction
         );
 
         //- Construct default (z-pencils)
@@ -130,6 +150,15 @@ public:
 
         //- Initialize
         void initialize();
+
+
+        void findMax
+        (
+            const volScalarField& vField,
+            scalarField vMax,
+            scalarField maxLoc
+        );
+
 
         //- Find the location of the maximum of a field (on all or a
         //  particular pencil).
@@ -227,7 +256,7 @@ public:
                 return numCellPerPencil_;
             }
     
-            List<Pair<scalar> >& pencilLocations()
+            pointField& pencilLocations()
             {
                 return pencilLocations_;
             }

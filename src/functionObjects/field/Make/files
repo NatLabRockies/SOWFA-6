@@ -1,12 +1,12 @@
 planarAveraging/planarAveraging.C
 
+cappingInversionStatistics/cappingInversionStatistics.C
+
 temporalAveraging/temporalAveraging.C
 temporalAveraging/temporalAveragingItem/temporalAveragingItem.C
 temporalAveraging/temporalAveragingItem/temporalAveragingItemIO.C
 
 geometricBlendingFactor/geometricBlendingFactor.C
-
-cappingInversionStatistics/cappingInversionStatistics.C
 
 
 LIB = $(SOWFA_LIBBIN)/libSOWFAfieldFunctionObjects

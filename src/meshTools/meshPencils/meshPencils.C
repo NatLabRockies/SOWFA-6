@@ -24,6 +24,9 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "meshPencils.H"
+#include "ListListOps.H"
+#include "PstreamCombineReduceOps.H"
+#include "mergePoints.H"
 
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -31,8 +34,6 @@ License
 namespace Foam
 {
     defineTypeNameAndDebug(meshPencils, 0);
-    
-    scalar meshPencils::tol_ = 1.0E-8;
 }
 
 
@@ -40,7 +41,6 @@ namespace Foam
 
 void Foam::meshPencils::findPencils_()
 {
-
     // On each processor, do a search through all cells and make a list of 
     // all distinct pencil locations. For illustration, take a pencil that is
     // along z.  The pencil "location" is it's (x,y) values.  It's "position"
@@ -48,8 +48,7 @@ void Foam::meshPencils::findPencils_()
 
     // This is the processor's own list of distinct pencil locations. The list
     // is initialized as empty.
-    DynamicList<Pair<scalar>> pencilLocationsP(0);
-    numberOfPencils_ = 0;
+    pointField pencilLocations(0);
 
     // Loop over all cells.
     forAll(mesh_.cells(),cellI)
@@ -57,7 +56,7 @@ void Foam::meshPencils::findPencils_()
 
         // Get the cell's "location" and "position".
         const point& cellCenter = mesh_.C()[cellI];
-        Pair<scalar> cellLoc;
+        point cellLoc(Zero);
         cellLoc[0] = cellCenter[orthogonalDirectionIndices_[0]];
         cellLoc[1] = cellCenter[orthogonalDirectionIndices_[1]];
         scalar cellPos = cellCenter[directionIndex_];
@@ -70,17 +69,20 @@ void Foam::meshPencils::findPencils_()
             // If the pencil location list is empty, add this cell's location
             // to the pencil location list; otherwise...
             bool addToList = true;
-            if (!pencilLocationsP.empty())
+            if (!pencilLocations.empty())
             {
                 // ...compare this cell's location against all pencil locations
                 // in the list, and if it is in common, don't add to the list.
-                forAll(pencilLocationsP,pencilI)
+                // In fact, upon the first find that it is in common, break out
+                // of the for loop and move on.
+                forAll(pencilLocations,pencilI)
                 {
-                    const Pair<scalar> pencilLoc = pencilLocationsP[pencilI];
+                    const point pencilLoc = pencilLocations[pencilI];
                     if( (mag(cellLoc[0] - pencilLoc[0]) < tol_) &&
                         (mag(cellLoc[1] - pencilLoc[1]) < tol_) )
                     {
                         addToList = false;
+                        break;
                     }
                 }
             }
@@ -88,89 +90,37 @@ void Foam::meshPencils::findPencils_()
             // If the cell location passes the test, add it to the pencil location list.
             if (addToList)
             {
-                pencilLocationsP.append(cellLoc);
-                numberOfPencils_++;
+                pencilLocations.append(cellLoc);
             }
         }
     }
 
 
-    // Now combine the plane location lists from each processor onto the master
-    List<List<Pair<scalar> > > pencilLocationsM(Pstream::nProcs());
-    pencilLocationsM[Pstream::myProcNo()] = pencilLocationsP;
-    Pstream::gatherList(pencilLocationsM);
+    // Combine the plane location lists from each processor onto the master
+    combineReduce(pencilLocations,ListPlusEqOp<pointField>());
 
 
-    // Remove duplicate values in the list of plane locations.  Do this only on the
-    // master processor.
-    if (Pstream::master())
-    {
-        DynamicList<Pair<scalar>> pencilLocations;
-        {
-            numberOfPencils_ = 0;
-            forAll(pencilLocationsM,ListI)
-            {
-                forAll(pencilLocationsM[ListI],ListJ)
-                {
-                    bool addToList = true;
-                    if (!pencilLocations.empty())
-                    {
-                        for(label j = 0; j < numberOfPencils_; j++)
-                        {
-                            const Pair<scalar> pencilLoc = pencilLocations[j];
-                            if ( (mag(pencilLocationsM[ListI][ListJ][0] - pencilLoc[0]) < tol_) &&
-                                 (mag(pencilLocationsM[ListI][ListJ][1] - pencilLoc[1]) < tol_) )
-                            {
-                                addToList = false;
-                            }
-                        }
-                    }
+    // Remove duplicate locations using the built-in mergePoints functionality.
+    labelList pMap;
+    Foam::mergePoints
+    (
+        pencilLocations,
+        tol_,
+        false,
+        pMap,
+        pencilLocations_
+    );
+    numberOfPencils_ = pencilLocations_.size();
 
-                    if (addToList)
-                    {
-                        pencilLocations.append(pencilLocationsM[ListI][ListJ]);
-                        numberOfPencils_++;
-                    }
-                }
-            }
-        }
-        pencilLocations_ = pencilLocations;
-        Info << endl << "Pencil Locations: " << pencilLocations_ << endl;
-    }
-
-    // Scatter the list back out to all processes.
-    Pstream::scatterList(pencilLocations_);
-
-
-/*
-    // Sort the height list to be in ascending order
-    forAll(planeLocationValues_,planeI)
-    {
-        scalar planeLocationValuesMin = 1.0E20;
-        scalar locValue = 0.0;
-        label locLabelJ = 0;
-        for(int planeJ = planeI; planeJ < numberOfPlanes_; planeJ++)
-        {
-            if(planeLocationValues_[planeJ] < planeLocationValuesMin)
-            {
-                locValue = planeLocationValues_[planeJ];
-                locLabelJ = planeJ;
-                planeLocationValuesMin = locValue;
-            }
-        }
-        planeLocationValues_[locLabelJ] = planeLocationValues_[planeI];
-        planeLocationValues_[planeI] = locValue;
-    }
-*/
 
 
     // Make a list of lists of cell ID labels.  Each list within the list contains
-    // the cell ID labels corresponding to a specific plane on a processor.  The overall list
-    // should contain as many cell ID labels lists as there are distinct planes.
-    // Also sum up the volume of cells in each plane on each processor.
+    // the cell ID labels corresponding to a specific pencil on a processor.  The overall list
+    // should contain as many cell ID labels lists as there are distinct pencils.
+    // Also sum up the volume of cells in each pencil on each processor.
     forAll(pencilLocations_,pencilI)
     {
-        const Pair<scalar> pencilLoc = pencilLocationsP[pencilI];
+        const point pencilLoc = pencilLocations_[pencilI];
 
         numCellPerPencil_.append(0);
         totVolPerPencil_.append(0.0);
@@ -180,7 +130,7 @@ void Foam::meshPencils::findPencils_()
         forAll(mesh_.cells(),cellI)
         {
             const point& cellCenter = mesh_.C()[cellI];
-            Pair<scalar> cellLoc;
+            point cellLoc;
             cellLoc[0] = cellCenter[orthogonalDirectionIndices_[0]];
             cellLoc[1] = cellCenter[orthogonalDirectionIndices_[1]];
             scalar cellPos = cellCenter[directionIndex_];
@@ -203,7 +153,6 @@ void Foam::meshPencils::findPencils_()
     // Gather the volumes per plane to get a global value.
     reduce(numCellPerPencil_,sumOp<List<label> >());
     reduce(totVolPerPencil_,sumOp<List<scalar> >());
-
 }
 
 
@@ -212,9 +161,9 @@ void Foam::meshPencils::findPencils_()
 Foam::meshPencils::meshPencils
 (
     const fvMesh& mesh,
-    const word& direction,
     const scalar extentLowerLim,
-    const scalar extentUpperLim
+    const scalar extentUpperLim,
+    const word direction
 )
 :
     mesh_(mesh),
@@ -243,6 +192,9 @@ Foam::meshPencils::meshPencils
 
     // Set initialization flag
     initialized_ = false;
+
+    // Initialize
+    initialize();
 }
 
 
@@ -262,6 +214,9 @@ Foam::meshPencils::meshPencils
 
     // Set initialization flag
     initialized_ = false;
+
+    // Initialize
+    initialize();
 }
 
 
@@ -278,9 +233,23 @@ void Foam::meshPencils::initialize()
 {
     if (not initialized_)
     {
+        tol_ = 1.0E-8 * mesh_.bounds().mag();
         findPencils_();
         initialized_ = true;
     }
+}
+
+
+
+void Foam::meshPencils::findMax
+(
+    const volScalarField& vField,
+    scalarField vMax,
+    scalarField maxLoc
+)
+{
+    
+    Info << " " << endl;    
 }
 
 

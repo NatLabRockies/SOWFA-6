@@ -50,6 +50,7 @@ SourceFiles
 #include "fvMeshFunctionObject.H"
 #include "logFiles.H"
 #include "volFields.H"
+#include "uniformDimensionedFields.H"
 #include "meshPencils.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -76,19 +77,15 @@ class cappingInversionStatistics
         //- Capping inversion height
         uniformDimensionedScalarField zi_;
 
-
         
 
 
 
     // Private Member Functions
 
-        //- Init fields
-        bool init(bool first);
+      cappingInversionStatistics(const cappingInversionStatistics&);
 
-
-        //- Calculate the blending factor field and return true if successful
-        virtual bool calc();
+      void operator=(const cappingInversionStatistics&);
 
 
 protected:
@@ -112,14 +109,8 @@ public:
         (
             const word& name,
             const Time& runTime,
-            const dictionary&
+            const dictionary& dict
         );
-
-        //- No copy construct
-        cappingInversionStatistics(const cappingInversionStatistics&);
-
-        //- No copy assignment
-        void operator=(const cappingInversionStatistics&);
 
 
     //- Destructor
@@ -131,6 +122,7 @@ public:
         //- Read the cappingInversionStatistics data
         virtual bool read(const dictionary&);
 
+        //- Compute the capping inversion height.
         virtual bool execute();
 
         //- Write the cappingInversionStatistics

@@ -27,9 +27,8 @@ License
 
 #include "cappingInversionStatistics.H"
 #include "addToRunTimeSelectionTable.H"
-#include "zeroGradientFvPatchFields.H"
-#include "fvcGrad.H"
-#include "surfaceInterpolate.H"
+#include "uniformDimensionedFields.H"
+//#include "fvcGrad.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -38,31 +37,29 @@ namespace Foam
 namespace functionObjects
 {
     defineTypeNameAndDebug(cappingInversionStatistics, 0);
-    addToRunTimeSelectionTable(functionObject, cappingInversionStatistics, dictionary);
+
+    addToRunTimeSelectionTable
+    (
+        functionObject, 
+        cappingInversionStatistics, 
+        dictionary
+    );
 }
 }
 
 
 // * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
 
-
 void Foam::functionObjects::cappingInversionStatistics::writeFileHeader(const label i)
 {
-    writeHeader(file(), "Stabilization blending factor");
-    writeCommented(file(), "Time");
-    writeTabbed(file(), "Scheme1");
-    writeTabbed(file(), "Scheme2");
-    writeTabbed(file(), "Blended");
-    file()  << endl;
+    // Add headers to output data
+    writeHeader(file(), "Capping inversion height");
+    writeCommented(file(), "Time (s)");
+    writeTabbed(file(), "zi");
+    file() << endl;
 }
 
 
-bool Foam::functionObjects::cappingInversionStatistics::calc()
-{
-  //read(dict_);
-   // init(false);
-    return true;
-}
 
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
@@ -87,47 +84,76 @@ Foam::functionObjects::cappingInversionStatistics::cappingInversionStatistics
             IOobject::NO_READ,
             IOobject::NO_WRITE
         ),
-        scalar(0.0)
+        scalar(750.0)
     )
-{
 
+
+{
     // Read the dictionary input for this function object.
     read(dict);
 
-    // Call the initialization function for the first time.
-    init(true);
+    resetName(typeName);    
 
+    
 }
+
+
+
+// * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
+
+Foam::functionObjects::cappingInversionStatistics::~cappingInversionStatistics()
+{}
 
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-bool Foam::functionObjects::cappingInversionStatistics::read
-(
-    const dictionary& dict
-)
+
+bool Foam::functionObjects::cappingInversionStatistics::read(const dictionary& dict)
 {
+    fvMeshFunctionObject::read(dict);
+
     return false;
 }
 
 
+
 bool Foam::functionObjects::cappingInversionStatistics::execute()
 {
+
+    // Get the temperature field
+    bool foundT = obr_.foundObject<volScalarField>("T");
+    if (!foundT)
+    {
+        FatalErrorInFunction
+            << "Unable to find temperature field (T) in the database. "
+            << exit(FatalError);
+    }
+    const volScalarField& T = obr_.lookupObject<volScalarField>("T");
+    
+    // Compute the gradient of the temperature field.
+    volVectorField Tgrad = fvc::grad(T);
+
+
     return true;
 }
 
 
+
 bool Foam::functionObjects::cappingInversionStatistics::write()
 {
+    Log << type() << " " << name() << "write: " << nl;
+
+    logFiles:: write();
+
     if (Pstream::master())
     {
-        writeTime(file());
         file()
-          //  << tab << nCellsScheme1
-          //<< tab << nCellsScheme2
-          //<< tab << nCellsBlended
+            << mesh_.time().value()
+            << tab << zi_.value()
             << endl;
     }
+
+    Log << "Capping inversion height: " << endl;
 
     return true;
 }
